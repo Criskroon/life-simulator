@@ -1,3 +1,4 @@
+import { getCountry } from '../data/countries';
 import type { PlayerState } from '../types/gameState';
 
 const TOKEN_PATTERN = /\{(\w+)\}/g;
@@ -17,7 +18,7 @@ export function renderTemplate(text: string, state: PlayerState): string {
       case 'age':
         return String(state.age);
       case 'country':
-        return state.country;
+        return getCountry(state.country).name;
       case 'currentYear':
         return String(state.currentYear);
       case 'gender':

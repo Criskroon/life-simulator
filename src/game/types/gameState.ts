@@ -1,3 +1,5 @@
+import type { CountryCode } from './country';
+
 export type Gender = 'male' | 'female' | 'nonbinary';
 
 export type RelationshipType =
@@ -86,7 +88,7 @@ export interface PlayerState {
   lastName: string;
   age: number;
   gender: Gender;
-  country: string;
+  country: CountryCode;
   alive: boolean;
   birthYear: number;
   currentYear: number;

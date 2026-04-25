@@ -8,7 +8,7 @@ export function NewLifeScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState<Gender>('female');
-  const [countryId, setCountryId] = useState(COUNTRIES[0]?.id ?? 'NL');
+  const [countryId, setCountryId] = useState(COUNTRIES[0]?.code ?? 'NL');
 
   return (
     <div className="min-h-screen flex justify-center p-6">
@@ -54,11 +54,11 @@ export function NewLifeScreen() {
             <div className="grid grid-cols-3 gap-2">
               {COUNTRIES.map((c) => (
                 <button
-                  key={c.id}
+                  key={c.code}
                   type="button"
-                  onClick={() => setCountryId(c.id)}
+                  onClick={() => setCountryId(c.code)}
                   className={`py-2 rounded-lg text-sm ${
-                    countryId === c.id
+                    countryId === c.code
                       ? 'bg-slate-900 text-white'
                       : 'bg-slate-100 text-slate-700'
                   }`}

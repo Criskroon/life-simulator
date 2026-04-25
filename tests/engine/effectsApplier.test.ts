@@ -8,7 +8,7 @@ const baseState: PlayerState = {
   lastName: 'User',
   age: 25,
   gender: 'female',
-  country: 'NL',
+  country: 'GB',
   alive: true,
   birthYear: 2000,
   currentYear: 2025,

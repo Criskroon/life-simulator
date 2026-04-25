@@ -43,11 +43,29 @@ export async function loadGame(): Promise<PlayerState | null> {
   const raw = await adapter.get(SAVE_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as PlayerState;
+    const parsed = JSON.parse(raw) as PlayerState;
+    return migrate(parsed);
   } catch {
     // Malformed save — treat as no save rather than crashing the app.
     return null;
   }
+}
+
+/**
+ * Forward-migrate a loaded save to the current schema. Touches only fields
+ * that have been renamed/recoded; the rest passes through. Keep additions
+ * here defensive — a corrupted field shouldn't strand a player's life.
+ */
+function migrate(state: PlayerState): PlayerState {
+  let next = state;
+
+  // 2026-04: Country codes were aligned to ISO-3166-1 alpha-2; "UK" became
+  // "GB". Older saves still write "UK" to the field, so remap on load.
+  if ((next.country as string) === 'UK') {
+    next = { ...next, country: 'GB' };
+  }
+
+  return next;
 }
 
 export async function deleteSave(): Promise<void> {

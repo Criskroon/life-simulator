@@ -7,6 +7,7 @@ import type {
   PlayerState,
   Relationship,
 } from '../types/gameState';
+import { adjustPrice, adjustSalary, getCurrentCountry } from './countryEngine';
 import { getAtPath, setAtPath } from './paths';
 
 const STAT_PATHS = new Set([
@@ -86,7 +87,12 @@ const SPECIAL_HANDLERS: Record<string, SpecialHandler> = {
 
   setJob: (state, payload) => {
     const job = payload as unknown as Job;
-    return { ...state, job };
+    // Author-supplied salary is in baseline (GB) units; scale to the
+    // player's country so a NL coffee-shop job and a US coffee-shop job
+    // pay differently from the moment they're set.
+    const country = getCurrentCountry(state);
+    const adjusted: Job = { ...job, salary: adjustSalary(job.salary, country) };
+    return { ...state, job: adjusted };
   },
 
   leaveJob: (state) => ({ ...state, job: null }),
@@ -98,12 +104,37 @@ const SPECIAL_HANDLERS: Record<string, SpecialHandler> = {
   }),
 };
 
+/**
+ * Country-adjust an event's raw value. Money paths use the cost-of-living
+ * index; salary paths use the salary index. Multiplicative ops (* /) are
+ * already country-neutral (they scale whatever's in place), so we only
+ * adjust additive/assignment ops.
+ */
+function countryAdjustValue(
+  state: PlayerState,
+  path: string,
+  op: string,
+  rawValue: number,
+): number {
+  if (op === '*' || op === '/') return rawValue;
+  const country = getCurrentCountry(state);
+  if (path === 'money') return adjustPrice(rawValue, country);
+  if (path === 'job.salary') return adjustSalary(rawValue, country);
+  return rawValue;
+}
+
 function applyArithmetic(state: PlayerState, effect: Effect): PlayerState {
   if (!effect.path || !effect.op || effect.value === undefined) return state;
 
   const current = getAtPath(state, effect.path);
+  const adjustedValue = countryAdjustValue(
+    state,
+    effect.path,
+    effect.op,
+    effect.value,
+  );
   if (effect.op === '=') {
-    return setAtPath(state, effect.path, clampIfBounded(effect.path, effect.value));
+    return setAtPath(state, effect.path, clampIfBounded(effect.path, adjustedValue));
   }
 
   // For arithmetic ops, treat missing/non-numeric current as 0 so authors
@@ -112,16 +143,16 @@ function applyArithmetic(state: PlayerState, effect: Effect): PlayerState {
   let next = base;
   switch (effect.op) {
     case '+':
-      next = base + effect.value;
+      next = base + adjustedValue;
       break;
     case '-':
-      next = base - effect.value;
+      next = base - adjustedValue;
       break;
     case '*':
-      next = base * effect.value;
+      next = base * adjustedValue;
       break;
     case '/':
-      next = effect.value === 0 ? base : base / effect.value;
+      next = adjustedValue === 0 ? base : base / adjustedValue;
       break;
   }
   return setAtPath(state, effect.path, clampIfBounded(effect.path, Math.round(next)));

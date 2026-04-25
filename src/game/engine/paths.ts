@@ -7,9 +7,34 @@
  * throw — events should never crash the game).
  */
 
+import { getCountry } from '../data/countries';
+
 export function getAtPath(root: unknown, path: string): unknown {
   if (!path) return undefined;
   const parts = path.split('.');
+
+  // Special case: `country.*` paths resolve through the COUNTRIES table
+  // because PlayerState.country is just an ISO-2 code, not the full record.
+  // Lets events write `{ path: 'country.continent', ... }` without
+  // duplicating country data on every player.
+  if (
+    parts[0] === 'country' &&
+    parts.length > 1 &&
+    root !== null &&
+    typeof root === 'object'
+  ) {
+    const code = (root as Record<string, unknown>).country;
+    if (typeof code === 'string') {
+      let current: unknown = getCountry(code);
+      for (let i = 1; i < parts.length; i++) {
+        if (current === null || current === undefined) return undefined;
+        if (typeof current !== 'object') return undefined;
+        current = (current as Record<string, unknown>)[parts[i] as string];
+      }
+      return current;
+    }
+  }
+
   let current: unknown = root;
   for (const part of parts) {
     if (current === null || current === undefined) return undefined;

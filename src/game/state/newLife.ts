@@ -1,4 +1,5 @@
 import { COUNTRIES, getCountry } from '../data/countries';
+import { getNamePool } from '../engine/countryEngine';
 import { randomFirstName, randomSurname } from '../data/names';
 import type { Gender, PlayerState, Relationship } from '../types/gameState';
 import type { Rng } from '../engine/rng';
@@ -17,14 +18,15 @@ export interface NewLifeOptions {
  */
 export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerState {
   const country = getCountry(options.countryId ?? pickCountry(rng));
+  const namePool = getNamePool(country);
   const gender: Gender = options.gender ?? pickGender(rng);
   const firstName =
-    options.firstName ?? randomFirstName(country.namePool, gender, () => rng.next());
-  const lastName = options.lastName ?? randomSurname(country.namePool, () => rng.next());
+    options.firstName ?? randomFirstName(namePool, gender, () => rng.next());
+  const lastName = options.lastName ?? randomSurname(namePool, () => rng.next());
 
-  const fatherFirst = randomFirstName(country.namePool, 'male', () => rng.next());
-  const motherFirst = randomFirstName(country.namePool, 'female', () => rng.next());
-  const motherMaiden = randomSurname(country.namePool, () => rng.next());
+  const fatherFirst = randomFirstName(namePool, 'male', () => rng.next());
+  const motherFirst = randomFirstName(namePool, 'female', () => rng.next());
+  const motherMaiden = randomSurname(namePool, () => rng.next());
 
   const currentYear = new Date().getFullYear();
 
@@ -55,7 +57,7 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
     parents.push({
       id: 'rel-sibling',
       type: 'sibling',
-      firstName: randomFirstName(country.namePool, pickGender(rng), () => rng.next()),
+      firstName: randomFirstName(namePool, pickGender(rng), () => rng.next()),
       lastName,
       age: rng.int(0, 8),
       alive: true,
@@ -69,7 +71,7 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
     lastName,
     age: 0,
     gender,
-    country: country.id,
+    country: country.code,
     alive: true,
     birthYear: currentYear,
     currentYear,
@@ -114,5 +116,5 @@ function pickGender(rng: Rng): Gender {
 }
 
 function pickCountry(rng: Rng): string {
-  return (rng.pick(COUNTRIES)).id;
+  return (rng.pick(COUNTRIES)).code;
 }

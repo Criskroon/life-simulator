@@ -17,9 +17,12 @@
  * CLI flags:
  *   --lives=N          number of lives to simulate (default 1000)
  *   --seed=N           seed for the master RNG (default 7)
+ *   --country=NL       force every life into one country (default: rotate
+ *                      evenly across all available countries)
  */
 import { ALL_EVENTS } from '../../src/game/data/events';
 import { CAREERS } from '../../src/game/data/careers';
+import { COUNTRIES } from '../../src/game/data/countries';
 import { simulateLife, type SimulatedLife } from '../lib/simulator';
 import { SEEDS } from '../fixtures/seeds';
 import { relPath, reportPath, writeReport } from '../lib/report';
@@ -27,6 +30,8 @@ import { relPath, reportPath, writeReport } from '../lib/report';
 interface Args {
   lives: number;
   seed: number;
+  /** If set, all lives use this country code; otherwise rotate evenly. */
+  country: string | null;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -34,7 +39,9 @@ function parseArgs(argv: string[]): Args {
   const lives = livesArg ? Number(livesArg.split('=')[1]) : 1000;
   const seedArg = argv.find((a) => a.startsWith('--seed='));
   const seed = seedArg ? Number(seedArg.split('=')[1]) : SEEDS.balance;
-  return { lives, seed };
+  const countryArg = argv.find((a) => a.startsWith('--country='));
+  const country = countryArg ? (countryArg.split('=')[1] ?? null) : null;
+  return { lives, seed, country };
 }
 
 function quantile(sortedAsc: number[], q: number): number {
@@ -58,14 +65,27 @@ function topN<K>(counter: Map<K, number>, n: number): Array<[K, number]> {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  console.log(`Simulating ${args.lives} lives (seed=${args.seed})...`);
+  const countryRotation = args.country
+    ? [args.country]
+    : COUNTRIES.map((c) => c.code);
+  console.log(
+    `Simulating ${args.lives} lives (seed=${args.seed}, countries=${countryRotation.join('/')})...`,
+  );
 
   const t0 = Date.now();
   const lives: SimulatedLife[] = [];
+  const livesByCountry = new Map<string, SimulatedLife[]>();
   for (let i = 0; i < args.lives; i++) {
     // Derive per-life seed from the master seed so the run is reproducible
     // but each life uses a distinct stream.
-    lives.push(simulateLife({ seed: args.seed * 1_000_003 + i }));
+    const countryId = countryRotation[i % countryRotation.length] as string;
+    const life = simulateLife({
+      seed: args.seed * 1_000_003 + i,
+      newLife: { countryId },
+    });
+    lives.push(life);
+    if (!livesByCountry.has(countryId)) livesByCountry.set(countryId, []);
+    livesByCountry.get(countryId)!.push(life);
     if ((i + 1) % 200 === 0) {
       console.log(`  ${i + 1}/${args.lives}`);
     }
@@ -150,6 +170,33 @@ async function main() {
   // ---- Stat-bounds violations (would indicate an effects-applier bug) ----
   const violations = lives.filter((l) => l.statBoundsViolation).length;
 
+  // ---- Per-country breakdown (only meaningful when rotating) ----
+  const perCountry: PerCountrySummary[] = [];
+  if (livesByCountry.size > 1) {
+    for (const [code, group] of livesByCountry.entries()) {
+      const lifeYears = group.map((l) => l.yearsLived).sort((a, b) => a - b);
+      const moneyEnd = group.map((l) => l.finalState.money);
+      const causeCounts = new Map<string, number>();
+      for (const l of group) {
+        causeCounts.set(l.causeOfDeath, (causeCounts.get(l.causeOfDeath) ?? 0) + 1);
+      }
+      const finalSalaries = group
+        .map((l) => l.finalState.job?.salary ?? 0)
+        .filter((s) => s > 0);
+      perCountry.push({
+        code,
+        lives: group.length,
+        meanLifespan: Math.round(mean(lifeYears) * 10) / 10,
+        medianLifespan: Math.round(quantile(lifeYears, 0.5) * 10) / 10,
+        meanMoneyAtDeath: Math.round(mean(moneyEnd)),
+        meanFinalSalary:
+          finalSalaries.length > 0 ? Math.round(mean(finalSalaries)) : 0,
+        topCause: topN(causeCounts, 1)[0]?.[0] ?? '—',
+      });
+    }
+    perCountry.sort((a, b) => a.code.localeCompare(b.code));
+  }
+
   const md = renderReport({
     args,
     elapsedMs,
@@ -165,12 +212,23 @@ async function main() {
     livesWithJob,
     livesAtTopLevel,
     violations,
+    perCountry,
   });
 
   const reportFile = reportPath('balance');
   const written = writeReport(reportFile, md);
   console.log(`\nReport: ${relPath(written)}`);
   console.log(`Mean lifespan: ${lifeStats.mean}, top cause: ${topN(causes, 1)[0]?.[0]}`);
+}
+
+interface PerCountrySummary {
+  code: string;
+  lives: number;
+  meanLifespan: number;
+  medianLifespan: number;
+  meanMoneyAtDeath: number;
+  meanFinalSalary: number;
+  topCause: string;
 }
 
 interface RenderInput {
@@ -188,6 +246,7 @@ interface RenderInput {
   livesWithJob: number;
   livesAtTopLevel: number;
   violations: number;
+  perCountry: PerCountrySummary[];
 }
 
 function renderReport(d: RenderInput): string {
@@ -231,6 +290,20 @@ function renderReport(d: RenderInput): string {
     lines.push('');
     for (const e of d.underTriggered.filter((x) => x.pctOfLives > 0)) {
       lines.push(`- ${e.id} — ${e.pctOfLives.toFixed(2)}%`);
+    }
+    lines.push('');
+  }
+
+  if (d.perCountry.length > 0) {
+    lines.push('## Per-country breakdown');
+    lines.push('');
+    lines.push(`| Country | Lives | Mean lifespan | Median | Mean money @ death | Mean final salary | Top cause |`);
+    lines.push(`|---|---:|---:|---:|---:|---:|---|`);
+    for (const c of d.perCountry) {
+      lines.push(
+        `| ${c.code} | ${c.lives} | ${c.meanLifespan} | ${c.medianLifespan} | ` +
+          `${c.meanMoneyAtDeath.toLocaleString()} | ${c.meanFinalSalary.toLocaleString()} | ${c.topCause} |`,
+      );
     }
     lines.push('');
   }

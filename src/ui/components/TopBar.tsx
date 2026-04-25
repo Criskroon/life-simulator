@@ -21,7 +21,7 @@ export function TopBar({ player }: TopBarProps) {
         <div className="text-right">
           <div className="text-xs text-slate-500">Net worth</div>
           <div className="font-mono font-semibold text-slate-900">
-            {country.currencySymbol}
+            {country.currency.symbol}
             {player.money.toLocaleString()}
           </div>
         </div>
