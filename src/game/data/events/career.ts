@@ -105,7 +105,7 @@ export const CAREER_EVENTS: GameEvent[] = [
     weight: 0.5,
     minAge: 18,
     maxAge: 65,
-    conditions: [{ path: 'job.performance', op: '<', value: 30 }],
+    conditions: [{ path: 'job.performance', op: '<', value: 50 }],
     title: 'You\'re Fired',
     description: 'HR scheduled a meeting for the end of the day. You already know what\'s coming.',
     choices: [
@@ -324,7 +324,7 @@ export const CAREER_EVENTS: GameEvent[] = [
     maxAge: 60,
     conditions: [
       { path: 'job', op: '!=', value: null as unknown as string },
-      { path: 'stats.happiness', op: '<', value: 35 },
+      { path: 'stats.happiness', op: '<', value: 50 },
     ],
     title: 'Burnout',
     description: 'You\'re exhausted. The thought of going to work tomorrow feels physically heavy.',

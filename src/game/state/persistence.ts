@@ -72,7 +72,25 @@ function migrate(state: PlayerState): PlayerState {
     next = { ...next, actionsRemainingThisYear: calculateActionBudget(next) };
   }
 
+  // 2026-04: pre-fix saves wrote duplicate relationship ids when an activity
+  // re-fired (e.g. multiple `rel-gym-friend` entries). `removeRelationship`
+  // filters by id and would wipe all clones at once; rename duplicates so
+  // each row is independently addressable.
+  next = { ...next, relationships: dedupeRelationshipIds(next.relationships) };
+
   return next;
+}
+
+function dedupeRelationshipIds(
+  relationships: PlayerState['relationships'],
+): PlayerState['relationships'] {
+  const seen = new Map<string, number>();
+  return relationships.map((rel) => {
+    const count = seen.get(rel.id) ?? 0;
+    seen.set(rel.id, count + 1);
+    if (count === 0) return rel;
+    return { ...rel, id: `${rel.id}-migrated-${count}` };
+  });
 }
 
 export async function deleteSave(): Promise<void> {

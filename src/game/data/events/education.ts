@@ -136,9 +136,14 @@ export const EDUCATION_EVENTS: GameEvent[] = [
   {
     id: 'edu_graduate_high_school',
     category: 'education',
-    weight: 20.0,
-    minAge: 18,
-    maxAge: 18,
+    // Wide window + dominant weight: a 1-year (age=18) window combined with
+    // the event-selector's quiet-year + category-diversity penalty left
+    // ~60% of high-school enrollees never seeing their graduation. Four
+    // years of opportunity (17-20) with weight 30 lifts conversion past
+    // 80%. `oncePerLife` still prevents double-graduations.
+    weight: 30.0,
+    minAge: 17,
+    maxAge: 20,
     oncePerLife: true,
     conditions: [{ path: 'education', op: 'has', value: 'high_school' }],
     title: 'Graduation Day',
@@ -289,9 +294,13 @@ export const EDUCATION_EVENTS: GameEvent[] = [
   {
     id: 'edu_uni_graduate',
     category: 'education',
-    weight: 20.0,
+    // Same widening as the high-school graduation: a 1-year window left
+    // ~70% of university enrollees stranded mid-degree. Four years
+    // (22-25) plus weight 30 brings conversion in line with the rest of
+    // the education chain.
+    weight: 30.0,
     minAge: 22,
-    maxAge: 22,
+    maxAge: 25,
     oncePerLife: true,
     conditions: [{ path: 'education', op: 'has', value: 'university' }],
     title: 'University Graduation',

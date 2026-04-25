@@ -81,6 +81,28 @@ describe('applyEffect', () => {
     expect(next.relationships[0]?.firstName).toBe('Sam');
   });
 
+  it('mints a unique id on every addRelationship, even when the payload reuses an id', () => {
+    const payload = {
+      id: 'rel-gym-friend',
+      type: 'friend',
+      firstName: 'Sam',
+      lastName: 'Park',
+      age: 26,
+      alive: true,
+      relationshipLevel: 55,
+    };
+    let state = baseState;
+    for (let i = 0; i < 5; i++) {
+      state = applyEffect(state, { special: 'addRelationship', payload });
+    }
+    const ids = state.relationships.map((r) => r.id);
+    expect(state.relationships).toHaveLength(5);
+    expect(new Set(ids).size).toBe(5);
+    for (const id of ids) {
+      expect(id.startsWith('rel-gym-friend-')).toBe(true);
+    }
+  });
+
   it('runs the special `die` handler', () => {
     const next = applyEffect(baseState, {
       special: 'die',

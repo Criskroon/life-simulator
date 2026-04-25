@@ -40,7 +40,12 @@ type SpecialHandler = (state: PlayerState, payload: Record<string, unknown>) => 
 const SPECIAL_HANDLERS: Record<string, SpecialHandler> = {
   addRelationship: (state, payload) => {
     const rel = payload as unknown as Relationship;
-    return { ...state, relationships: [...state.relationships, rel] };
+    // Activities re-fire over a life, so authored ids like `rel-gym-friend`
+    // would collide. Mint a deterministic, unique id from year + relationship
+    // index so each addRelationship produces a distinct record.
+    const baseId = rel.id || 'rel';
+    const uniqueId = `${baseId}-y${state.currentYear}-n${state.relationships.length}`;
+    return { ...state, relationships: [...state.relationships, { ...rel, id: uniqueId }] };
   },
 
   removeRelationship: (state, payload) => {
