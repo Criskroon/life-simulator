@@ -23,6 +23,7 @@ const playerAt = (age: number, overrides: Partial<PlayerState> = {}): PlayerStat
   criminalRecord: [],
   history: [],
   triggeredEventIds: [],
+  actionsRemainingThisYear: 3,
   ...overrides,
 });
 

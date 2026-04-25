@@ -37,6 +37,7 @@ const baseState = (country = 'GB'): PlayerState => ({
   criminalRecord: [],
   history: [],
   triggeredEventIds: [],
+  actionsRemainingThisYear: 3,
 });
 
 describe('countryEngine — lookups', () => {

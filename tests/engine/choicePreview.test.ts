@@ -22,6 +22,7 @@ const baseState: PlayerState = {
   criminalRecord: [],
   history: [],
   triggeredEventIds: [],
+  actionsRemainingThisYear: 3,
 };
 
 describe('getChoicePreview', () => {

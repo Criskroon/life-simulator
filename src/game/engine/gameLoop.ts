@@ -1,5 +1,6 @@
 import type { GameEvent, ResolvedChoice } from '../types/events';
 import type { PlayerState } from '../types/gameState';
+import { calculateActionBudget } from './actionBudget';
 import { applyEffectsWithFeedback } from './effectsApplier';
 import { selectYearEvents } from './eventSelector';
 import { resolveChoice } from './outcomeResolver';
@@ -35,6 +36,9 @@ export function ageUp(
 
   next = applyPassiveEffects(next);
   next = ageRelationships(next);
+  // Refresh the activities budget for the new year. Anything left over from
+  // last year evaporates; the player has to spend or lose them.
+  next = { ...next, actionsRemainingThisYear: calculateActionBudget(next) };
 
   const pendingEvents = selectYearEvents(next, events, rng);
   return { state: next, pendingEvents };

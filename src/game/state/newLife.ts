@@ -1,4 +1,5 @@
 import { COUNTRIES, getCountry } from '../data/countries';
+import { calculateActionBudget } from '../engine/actionBudget';
 import { getNamePool } from '../engine/countryEngine';
 import { randomFirstName, randomSurname } from '../data/names';
 import type { Gender, PlayerState, Relationship } from '../types/gameState';
@@ -65,7 +66,7 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
     });
   }
 
-  return {
+  const player: PlayerState = {
     id: `life-${Date.now()}-${rng.int(1000, 9999)}`,
     firstName,
     lastName,
@@ -105,7 +106,11 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
       },
     ],
     triggeredEventIds: [],
+    actionsRemainingThisYear: 0,
   };
+  // Compute the budget after the rest of the state is built so the modifiers
+  // (job=null, low health, etc.) see the final values.
+  return { ...player, actionsRemainingThisYear: calculateActionBudget(player) };
 }
 
 function pickGender(rng: Rng): Gender {

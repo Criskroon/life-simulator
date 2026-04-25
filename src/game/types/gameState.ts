@@ -108,6 +108,14 @@ export interface PlayerState {
   /** Event IDs that have already triggered for this life (for oncePerLife). */
   triggeredEventIds: string[];
 
+  /**
+   * Activity-system action budget for the current year. Reset by ageUp() to
+   * the value of calculateActionBudget(state). Decrements as the player
+   * spends actions on Activities-menu items; unused actions expire at year
+   * end (not banked).
+   */
+  actionsRemainingThisYear: number;
+
   /** Cause of death, set when alive becomes false. */
   causeOfDeath?: string;
 }

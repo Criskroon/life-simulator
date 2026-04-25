@@ -62,6 +62,7 @@ function makePlayer(money: number): PlayerState {
     criminalRecord: [],
     history: [],
     triggeredEventIds: [],
+    actionsRemainingThisYear: 3,
   };
 }
 
@@ -77,7 +78,10 @@ describe('insufficient-funds flow', () => {
       lastResolution: null,
       resolutionTick: 0,
       pendingInsufficientChoice: null,
+      pendingInsufficientActivity: null,
+      pendingDowngrade: false,
       yearAwaitingEnd: false,
+      activitiesMenuOpen: false,
       rngState: 1,
     });
   });
@@ -123,9 +127,12 @@ describe('insufficient-funds flow', () => {
       // Penalty resolution is set so the modal can show it.
       expect(s.lastResolution).not.toBeNull();
       expect(s.lastResolution?.narrative).toContain('Embarrassing');
-      // Happiness -3, looks -2 vs the snapshot before confirmation.
-      expect(s.player?.stats.happiness).toBe(happinessBefore - 3);
+      // Penalty buffed in V1 of activities work: -5 happiness, -2 looks.
+      expect(s.player?.stats.happiness).toBe(happinessBefore - 5);
       expect(s.player?.stats.looks).toBe(looksBefore - 2);
+      // The pendingDowngrade flag is set so the next chosen alternative
+      // takes an additional -3 happiness hit.
+      expect(s.pendingDowngrade).toBe(true);
       // Event is STILL in the queue — the player has to pick again.
       expect(s.pendingEvents.length).toBe(1);
       expect(s.pendingEvents[0]?.id).toBe('test_expensive');
@@ -157,6 +164,21 @@ describe('insufficient-funds flow', () => {
       const s = useGameStore.getState();
       expect(s.pendingInsufficientChoice).toBeNull();
       expect(s.player?.triggeredEventIds).toContain('test_expensive');
+    });
+
+    it('applies the downgrade penalty (-3 happiness) on the cheaper alternative', () => {
+      // Snapshot AFTER the embarrassment penalty so we measure only the
+      // downgrade hit on the alternative — not the embarrassment itself.
+      useGameStore.getState().confirmInsufficientChoice();
+      useGameStore.getState().clearLastResolution();
+      const happinessBeforeAlt = useGameStore.getState().player?.stats.happiness ?? 0;
+      // The alternative choice already says "stats.happiness -1". With the
+      // downgrade hit, total drop should be 1 + 3 = 4.
+      useGameStore.getState().resolveCurrentEvent(1);
+      const s = useGameStore.getState();
+      expect(s.player?.stats.happiness).toBe(happinessBeforeAlt - 4);
+      expect(s.pendingDowngrade).toBe(false);
+      expect(s.lastResolution?.narrative ?? '').toContain('settled for less');
     });
   });
 });

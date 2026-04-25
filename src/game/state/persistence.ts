@@ -1,3 +1,4 @@
+import { calculateActionBudget } from '../engine/actionBudget';
 import type { PlayerState } from '../types/gameState';
 
 /**
@@ -63,6 +64,12 @@ function migrate(state: PlayerState): PlayerState {
   // "GB". Older saves still write "UK" to the field, so remap on load.
   if ((next.country as string) === 'UK') {
     next = { ...next, country: 'GB' };
+  }
+
+  // Activities-menu: pre-V1 saves don't carry an action budget. Seed one
+  // from the player's current phase so they don't load with 0 actions.
+  if (typeof next.actionsRemainingThisYear !== 'number') {
+    next = { ...next, actionsRemainingThisYear: calculateActionBudget(next) };
   }
 
   return next;

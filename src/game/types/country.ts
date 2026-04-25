@@ -91,6 +91,13 @@ export interface CountryRules {
   schoolEndAge: number;
   weedLegal: boolean;
   sameSexMarriageLegal: boolean;
+  /**
+   * Loose "is gambling broadly available?" boolean — covers lottery, casinos,
+   * sports betting. A future revision could split this into per-vertical
+   * flags with age limits, but for the V1 lottery activity a simple bool
+   * is enough.
+   */
+  gambling: boolean;
   /** Top marginal income tax rate, %. */
   incomeTaxTopRate: number;
 }
