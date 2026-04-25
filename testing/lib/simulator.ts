@@ -84,7 +84,8 @@ export function simulateLife(opts: SimulateOptions): SimulatedLife {
     for (const event of ageResult.pendingEvents) {
       const idx = choose(event, state, rng);
       const safeIdx = Math.min(Math.max(0, idx), event.choices.length - 1);
-      state = resolveEvent(state, event, safeIdx);
+      const result = resolveEvent(state, event, safeIdx, rng);
+      state = result.state;
       eventTriggerCounts.set(
         event.id,
         (eventTriggerCounts.get(event.id) ?? 0) + 1,

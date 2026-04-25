@@ -12,11 +12,38 @@ export const CHILDHOOD_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Have fun anyway',
-        effects: [{ path: 'stats.happiness', op: '+', value: 6 }],
+        outcomes: [
+          {
+            weight: 60,
+            narrative: 'Three kids is plenty when one of them brought a piñata. You go to bed sticky and grinning.',
+            effects: [{ path: 'stats.happiness', op: '+', value: 7 }],
+          },
+          {
+            weight: 30,
+            narrative: 'You force a smile through the pizza. The empty chairs are louder than the music.',
+            effects: [{ path: 'stats.happiness', op: '+', value: 2 }],
+          },
+          {
+            weight: 10,
+            narrative: 'Halfway through cake, two of the three kids start a fight. The party ends early.',
+            effects: [{ path: 'stats.happiness', op: '-', value: 3 }],
+          },
+        ],
       },
       {
         label: 'Sulk in your room',
-        effects: [{ path: 'stats.happiness', op: '-', value: 4 }],
+        outcomes: [
+          {
+            weight: 70,
+            narrative: 'You stay upstairs the whole time. Your mother gives you the look for a week.',
+            effects: [{ path: 'stats.happiness', op: '-', value: 5 }],
+          },
+          {
+            weight: 30,
+            narrative: 'You sulk until your dad sneaks up with a slice of cake and a bad joke. It almost works.',
+            effects: [{ path: 'stats.happiness', op: '-', value: 1 }],
+          },
+        ],
       },
     ],
   },
@@ -32,9 +59,30 @@ export const CHILDHOOD_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Keep the dog!',
-        effects: [
-          { path: 'stats.happiness', op: '+', value: 12 },
-          { path: 'stats.health', op: '+', value: 3 },
+        outcomes: [
+          {
+            weight: 70,
+            narrative: 'You name him Biscuit. He sleeps at the foot of your bed every night and you love him stupidly.',
+            effects: [
+              { path: 'stats.happiness', op: '+', value: 12 },
+              { path: 'stats.health', op: '+', value: 3 },
+            ],
+          },
+          {
+            weight: 20,
+            narrative: 'Biscuit chews through everything in the house. Your parents threaten to send him back weekly.',
+            effects: [
+              { path: 'stats.happiness', op: '+', value: 5 },
+            ],
+          },
+          {
+            weight: 10,
+            narrative: 'Turns out you\'re allergic. After two weeks of red eyes, the dog goes to live with your aunt.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 6 },
+              { path: 'stats.health', op: '-', value: 2 },
+            ],
+          },
         ],
       },
       {
@@ -84,19 +132,58 @@ export const CHILDHOOD_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Forgive them',
-        effects: [{ path: 'stats.happiness', op: '-', value: 2 }],
+        outcomes: [
+          {
+            weight: 55,
+            narrative: 'They look genuinely surprised, then hug you. The toy is gone, but the truce is real.',
+            effects: [{ path: 'stats.happiness', op: '+', value: 3 }],
+          },
+          {
+            weight: 45,
+            narrative: 'They take your forgiveness as permission to do it again next week.',
+            effects: [{ path: 'stats.happiness', op: '-', value: 4 }],
+          },
+        ],
       },
       {
         label: 'Tell mom',
-        effects: [
-          { path: 'stats.happiness', op: '+', value: 2 },
+        outcomes: [
+          {
+            weight: 60,
+            narrative: 'Mom believes you. Your sibling spends the afternoon scrubbing the kitchen.',
+            effects: [{ path: 'stats.happiness', op: '+', value: 4 }],
+          },
+          {
+            weight: 40,
+            narrative: 'Mom calls you a tattletale and tells you both to figure it out yourselves.',
+            effects: [{ path: 'stats.happiness', op: '-', value: 3 }],
+          },
         ],
       },
       {
         label: 'Plot revenge',
-        effects: [
-          { path: 'stats.happiness', op: '+', value: 4 },
-          { path: 'stats.smarts', op: '+', value: 1 },
+        outcomes: [
+          {
+            weight: 50,
+            narrative: 'You hide their favorite shoes in the laundry. Watching them panic is more satisfying than the toy ever was.',
+            effects: [
+              { path: 'stats.happiness', op: '+', value: 6 },
+              { path: 'stats.smarts', op: '+', value: 1 },
+            ],
+          },
+          {
+            weight: 35,
+            narrative: 'You get caught mid-plot. Mom is not impressed. You lose dessert for a week.',
+            effects: [{ path: 'stats.happiness', op: '-', value: 3 }],
+          },
+          {
+            weight: 15,
+            narrative: 'Your revenge backfires spectacularly. Their counter-prank involves your bed and a glass of water.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 5 },
+              { path: 'stats.health', op: '-', value: 1 },
+            ],
+          },
         ],
       },
     ],
@@ -295,21 +382,76 @@ export const CHILDHOOD_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Tell a teacher',
-        effects: [
-          { path: 'stats.happiness', op: '+', value: 1 },
+        outcomes: [
+          {
+            weight: 50,
+            narrative: 'The teacher takes it seriously. The bully gets pulled out of class and the shoving stops.',
+            effects: [{ path: 'stats.happiness', op: '+', value: 4 }],
+          },
+          {
+            weight: 35,
+            narrative: 'The teacher tells you to "work it out yourselves." The shoving gets worse the next day.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 5 },
+              { path: 'stats.health', op: '-', value: 2 },
+            ],
+          },
+          {
+            weight: 15,
+            narrative: 'Word gets around that you snitched. The whole grade now treats you like a leper.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 8 },
+            ],
+          },
         ],
       },
       {
         label: 'Fight back',
-        effects: [
-          { path: 'stats.health', op: '-', value: 4 },
-          { path: 'stats.happiness', op: '+', value: 3 },
+        outcomes: [
+          {
+            weight: 50,
+            narrative: 'You throw the first punch. He goes down looking confused. The bullies leave you alone after that — you have a reputation now.',
+            effects: [
+              { path: 'stats.happiness', op: '+', value: 8 },
+              { path: 'stats.health', op: '-', value: 3 },
+            ],
+          },
+          {
+            weight: 35,
+            narrative: 'You don\'t stand a chance. He\'s two heads taller and clearly knows what he\'s doing. You walk home with a black eye and bruised pride.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 10 },
+              { path: 'stats.health', op: '-', value: 8 },
+            ],
+          },
+          {
+            weight: 15,
+            narrative: 'The teacher sees everything. Both of you get a three-day suspension. Your parents are not impressed.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 5 },
+              { path: 'stats.smarts', op: '-', value: 3 },
+            ],
+          },
         ],
       },
       {
         label: 'Take it quietly',
-        effects: [
-          { path: 'stats.happiness', op: '-', value: 6 },
+        outcomes: [
+          {
+            weight: 70,
+            narrative: 'You keep your head down for weeks. It eats at you in a quiet, slow way that doesn\'t go away.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 8 },
+              { path: 'stats.health', op: '-', value: 2 },
+            ],
+          },
+          {
+            weight: 30,
+            narrative: 'You ride it out. Eventually the bully gets bored and finds a new target. You feel a little hollowed out about it.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 4 },
+            ],
+          },
         ],
       },
     ],

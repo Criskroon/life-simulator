@@ -80,6 +80,8 @@ export interface HistoryEntry {
   eventId: string;
   description: string;
   choiceLabel?: string;
+  /** Set when the resolved choice came from a probabilistic outcome. */
+  outcomeNarrative?: string;
 }
 
 export interface PlayerState {

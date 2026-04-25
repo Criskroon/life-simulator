@@ -1,4 +1,4 @@
-import type { Effect } from '../types/events';
+import type { Effect, SpecialSummary, StatDelta } from '../types/events';
 import type {
   Asset,
   CrimeRecord,
@@ -174,4 +174,123 @@ export function applyEffects(state: PlayerState, effects: Effect[]): PlayerState
 /** Exposed so future packages or tests can register additional effect types. */
 export function registerSpecialEffect(name: string, handler: SpecialHandler): void {
   SPECIAL_HANDLERS[name] = handler;
+}
+
+/**
+ * Numeric paths the StatFeedback overlay shows as ± deltas. Anything else
+ * (job.* internals, country.* lookups) stays out of the UI noise and is
+ * surfaced through `specials` instead.
+ */
+const FEEDBACK_PATHS = new Set([
+  'stats.health',
+  'stats.happiness',
+  'stats.smarts',
+  'stats.looks',
+  'money',
+]);
+
+function summarizeSpecial(effect: Effect, state: PlayerState): SpecialSummary | null {
+  if (!effect.special) return null;
+  const payload = effect.payload ?? {};
+  switch (effect.special) {
+    case 'addRelationship': {
+      const rel = payload as Partial<Relationship>;
+      const name = [rel.firstName, rel.lastName].filter(Boolean).join(' ').trim();
+      const labelByType: Record<string, string> = {
+        spouse: name ? `Married ${name}` : 'Got married',
+        partner: name ? `Started dating ${name}` : 'New partner',
+        friend: name ? `Befriended ${name}` : 'New friend',
+        child: name ? `Welcomed ${name}` : 'Had a child',
+      };
+      return { special: 'addRelationship', label: labelByType[rel.type ?? 'friend'] ?? `New relationship: ${name || rel.type}` };
+    }
+    case 'removeRelationship': {
+      const id = payload.id as string | undefined;
+      const rel = id ? state.relationships.find((r) => r.id === id) : null;
+      const name = rel ? `${rel.firstName} ${rel.lastName}`.trim() : 'someone';
+      return { special: 'removeRelationship', label: `Lost touch with ${name}` };
+    }
+    case 'addAsset': {
+      const asset = payload as Partial<Asset>;
+      return { special: 'addAsset', label: asset.name ? `Bought: ${asset.name}` : 'New asset' };
+    }
+    case 'addCrime': {
+      const crime = payload as Partial<CrimeRecord>;
+      const verb = crime.caught ? 'Caught for' : 'Got away with';
+      return { special: 'addCrime', label: crime.crime ? `${verb} ${crime.crime}` : 'Committed a crime' };
+    }
+    case 'addEducation': {
+      const edu = payload as Partial<EducationRecord>;
+      return { special: 'addEducation', label: edu.institutionName ? `Enrolled: ${edu.institutionName}` : 'Started a new education' };
+    }
+    case 'completeEducation': {
+      const level = payload.level as string | undefined;
+      const pretty = level ? level.replace(/_/g, ' ') : 'school';
+      return { special: 'completeEducation', label: `Graduated: ${pretty}` };
+    }
+    case 'setJob': {
+      const job = payload as Partial<Job>;
+      return { special: 'setJob', label: job.title ? `New job: ${job.title}` : 'Started a new job' };
+    }
+    case 'leaveJob':
+      return { special: 'leaveJob', label: 'Left the job' };
+    case 'die': {
+      const cause = payload.cause as string | undefined;
+      return { special: 'die', label: cause ? `Died: ${cause}` : 'Died' };
+    }
+    default:
+      return null;
+  }
+}
+
+export interface ApplyEffectsResult {
+  state: PlayerState;
+  deltas: StatDelta[];
+  specials: SpecialSummary[];
+}
+
+/**
+ * Variant of `applyEffects` that records what changed for the StatFeedback UI.
+ * Deltas only cover paths in FEEDBACK_PATHS; everything else (e.g. job.salary
+ * tweaks, criminal record entries) is surfaced through `specials` if it was
+ * a special effect, and silently otherwise.
+ *
+ * Pure: returns a new state, never mutates.
+ */
+export function applyEffectsWithFeedback(state: PlayerState, effects: Effect[]): ApplyEffectsResult {
+  const accumulated = new Map<string, { before: number; after: number }>();
+  const specials: SpecialSummary[] = [];
+
+  let next = state;
+  for (const effect of effects) {
+    if (effect.special) {
+      const summary = summarizeSpecial(effect, next);
+      next = applyEffect(next, effect);
+      if (summary) specials.push(summary);
+      continue;
+    }
+
+    if (effect.path && FEEDBACK_PATHS.has(effect.path)) {
+      const beforeRaw = getAtPath(next, effect.path);
+      const before = typeof beforeRaw === 'number' ? beforeRaw : 0;
+      next = applyEffect(next, effect);
+      const afterRaw = getAtPath(next, effect.path);
+      const after = typeof afterRaw === 'number' ? afterRaw : 0;
+      const existing = accumulated.get(effect.path);
+      if (existing) {
+        existing.after = after;
+      } else {
+        accumulated.set(effect.path, { before, after });
+      }
+    } else {
+      next = applyEffect(next, effect);
+    }
+  }
+
+  const deltas: StatDelta[] = [];
+  for (const [path, { before, after }] of accumulated.entries()) {
+    if (before !== after) deltas.push({ path, before, after });
+  }
+
+  return { state: next, deltas, specials };
 }

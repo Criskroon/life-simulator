@@ -19,3 +19,28 @@ body {
 html, body {
   overscroll-behavior-y: none;
 }
+
+/* StatFeedback toast: slide in from the right (or top on mobile), then
+   linger and fade. We rely on CSS animation rather than React Transition
+   because the toasts are short-lived and don't need staged enter/exit. */
+@keyframes feedbackToastDesktop {
+  0%   { opacity: 0; transform: translateX(24px) scale(0.96); }
+  10%  { opacity: 1; transform: translateX(0)    scale(1);    }
+  80%  { opacity: 1; transform: translateX(0)    scale(1);    }
+  100% { opacity: 0; transform: translateX(0)    scale(0.98); }
+}
+@keyframes feedbackToastMobile {
+  0%   { opacity: 0; transform: translateY(-16px) scale(0.96); }
+  10%  { opacity: 1; transform: translateY(0)     scale(1);    }
+  80%  { opacity: 1; transform: translateY(0)     scale(1);    }
+  100% { opacity: 0; transform: translateY(-4px)  scale(0.98); }
+}
+.feedback-toast {
+  animation: feedbackToastMobile 2500ms ease-out forwards;
+  will-change: opacity, transform;
+}
+@media (min-width: 640px) {
+  .feedback-toast {
+    animation-name: feedbackToastDesktop;
+  }
+}

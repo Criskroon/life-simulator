@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { ALL_EVENTS } from '../data/events';
 import { ageUp, endYear, resolveEvent } from '../engine/gameLoop';
 import { createRng, hashSeed, type Rng } from '../engine/rng';
-import type { GameEvent } from '../types/events';
+import type { GameEvent, ResolvedChoice } from '../types/events';
 import type { PlayerState } from '../types/gameState';
 import { createNewLife, type NewLifeOptions } from './newLife';
 import { deleteSave, loadGame, saveGame } from './persistence';
@@ -14,6 +14,10 @@ interface GameStore {
   pendingEvents: GameEvent[];
   screen: Screen;
   rngState: number;
+  /** Result of the last resolved choice; consumed by StatFeedback overlay. */
+  lastResolution: ResolvedChoice | null;
+  /** Increments on each resolution so the UI can re-trigger animations even on identical resolutions. */
+  resolutionTick: number;
 
   // actions
   startNewLife: (options?: NewLifeOptions) => void;
@@ -24,6 +28,7 @@ interface GameStore {
   loadSavedGame: () => Promise<boolean>;
   hasSave: () => Promise<boolean>;
   deleteCurrentSave: () => Promise<void>;
+  clearLastResolution: () => void;
 }
 
 function freshRngSeed(): number {
@@ -43,6 +48,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pendingEvents: [],
   screen: 'menu',
   rngState: 0,
+  lastResolution: null,
+  resolutionTick: 0,
 
   startNewLife: (options) => {
     const seed = freshRngSeed();
@@ -53,6 +60,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pendingEvents: [],
       screen: 'game',
       rngState: rng.getState(),
+      lastResolution: null,
+      resolutionTick: 0,
     });
     void saveGame(player);
   },
@@ -73,12 +82,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   resolveCurrentEvent: (choiceIndex) => {
-    const { player, pendingEvents } = get();
+    const { player, pendingEvents, rngState, resolutionTick } = get();
     if (!player || pendingEvents.length === 0) return;
     const event = pendingEvents[0] as GameEvent;
-    const next = resolveEvent(player, event, choiceIndex);
+
+    const rng = createRng(rngState);
+    const { state: next, resolved } = resolveEvent(player, event, choiceIndex, rng);
+    const newRngState = rng.getState();
+
     const remaining = pendingEvents.slice(1);
-    set({ player: next, pendingEvents: remaining });
+    set({
+      player: next,
+      pendingEvents: remaining,
+      rngState: newRngState,
+      lastResolution: resolved,
+      resolutionTick: resolutionTick + 1,
+    });
     if (remaining.length === 0) {
       get().endCurrentYear();
     } else {
@@ -102,7 +121,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   goToMenu: () => {
-    set({ screen: 'menu', pendingEvents: [] });
+    set({ screen: 'menu', pendingEvents: [], lastResolution: null });
   },
 
   loadSavedGame: async () => {
@@ -113,6 +132,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pendingEvents: [],
       screen: player.alive ? 'game' : 'death',
       rngState: freshRngSeed(),
+      lastResolution: null,
+      resolutionTick: 0,
     });
     return true;
   },
@@ -124,6 +145,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   deleteCurrentSave: async () => {
     await deleteSave();
-    set({ player: null, pendingEvents: [], screen: 'menu' });
+    set({ player: null, pendingEvents: [], screen: 'menu', lastResolution: null });
+  },
+
+  clearLastResolution: () => {
+    set({ lastResolution: null });
   },
 }));

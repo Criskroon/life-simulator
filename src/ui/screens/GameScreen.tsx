@@ -3,6 +3,7 @@ import { AgeButton } from '../components/AgeButton';
 import { EventModal } from '../components/EventModal';
 import { SidePanel } from '../components/SidePanel';
 import { StatBar } from '../components/StatBar';
+import { StatFeedback } from '../components/StatFeedback';
 import { TopBar } from '../components/TopBar';
 
 export function GameScreen() {
@@ -48,6 +49,8 @@ export function GameScreen() {
           remainingCount={pendingEvents.length - 1}
         />
       )}
+
+      <StatFeedback />
     </div>
   );
 }

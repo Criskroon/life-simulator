@@ -186,7 +186,32 @@ export const EDUCATION_EVENTS: GameEvent[] = [
       },
       {
         label: 'Skip it, save the money',
-        effects: [{ path: 'stats.happiness', op: '+', value: 2 }],
+        outcomes: [
+          {
+            weight: 50,
+            narrative: 'You start working instead. The money is nice, even if everyone you graduated with is now talking about majors.',
+            effects: [
+              { path: 'money', op: '+', value: 2000 },
+              { path: 'stats.happiness', op: '+', value: 1 },
+            ],
+          },
+          {
+            weight: 35,
+            narrative: 'You spend the year drifting between part-time jobs. Your parents are unimpressed and the money is gone by spring.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 5 },
+            ],
+          },
+          {
+            weight: 15,
+            narrative: 'You teach yourself a trade online. Within a year you\'re billing more than most of your classmates ever will.',
+            effects: [
+              { path: 'money', op: '+', value: 6000 },
+              { path: 'stats.smarts', op: '+', value: 4 },
+              { path: 'stats.happiness', op: '+', value: 5 },
+            ],
+          },
+        ],
       },
     ],
   },
@@ -202,16 +227,60 @@ export const EDUCATION_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Embrace the chaos',
-        effects: [
-          { path: 'stats.happiness', op: '+', value: 6 },
-          { path: 'stats.smarts', op: '-', value: 3 },
-          { path: 'stats.health', op: '-', value: 4 },
+        outcomes: [
+          {
+            weight: 50,
+            narrative: 'You wake up in a stranger\'s laundry room with a story you\'ll tell for the next decade. Worth it.',
+            effects: [
+              { path: 'stats.happiness', op: '+', value: 8 },
+              { path: 'stats.health', op: '-', value: 4 },
+              { path: 'stats.smarts', op: '-', value: 2 },
+            ],
+          },
+          {
+            weight: 30,
+            narrative: 'You drink something blue out of a punch bowl. Your roommate finds you on the bathroom tile at 4am.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 2 },
+              { path: 'stats.health', op: '-', value: 8 },
+              { path: 'stats.smarts', op: '-', value: 3 },
+            ],
+          },
+          {
+            weight: 15,
+            narrative: 'Campus security shuts it down. You spend the rest of the night writing an essay on personal accountability.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 4 },
+              { path: 'stats.smarts', op: '-', value: 1 },
+            ],
+          },
+          {
+            weight: 5,
+            narrative: 'Someone calls 911. You don\'t remember what happened. The university calls your parents.',
+            effects: [
+              { path: 'stats.health', op: '-', value: 12 },
+              { path: 'stats.happiness', op: '-', value: 8 },
+              { path: 'money', op: '-', value: 1500 },
+            ],
+          },
         ],
       },
       {
         label: 'Quietly study',
-        effects: [
-          { path: 'stats.smarts', op: '+', value: 4 },
+        outcomes: [
+          {
+            weight: 65,
+            narrative: 'You finish the assignment by midnight. The dorm is loud, but you got what you came for.',
+            effects: [{ path: 'stats.smarts', op: '+', value: 5 }],
+          },
+          {
+            weight: 35,
+            narrative: 'You stare at the textbook for three hours and absorb nothing. The bass through the wall wins.',
+            effects: [
+              { path: 'stats.smarts', op: '+', value: 1 },
+              { path: 'stats.happiness', op: '-', value: 2 },
+            ],
+          },
         ],
       },
     ],
@@ -384,14 +453,47 @@ export const EDUCATION_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Cut and head outside',
-        effects: [
-          { path: 'stats.happiness', op: '+', value: 4 },
-          { path: 'stats.smarts', op: '-', value: 2 },
+        outcomes: [
+          {
+            weight: 55,
+            narrative: 'You spend the afternoon at the park. Nobody notices, nothing happens. A perfect crime.',
+            effects: [
+              { path: 'stats.happiness', op: '+', value: 5 },
+              { path: 'stats.smarts', op: '-', value: 1 },
+            ],
+          },
+          {
+            weight: 30,
+            narrative: 'Your teacher calls home. You get a lecture about "your future" that lasts longer than the class would have.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 3 },
+              { path: 'stats.smarts', op: '-', value: 2 },
+            ],
+          },
+          {
+            weight: 15,
+            narrative: 'The pop quiz you missed gets graded as a zero. Your average tanks for the semester.',
+            effects: [
+              { path: 'stats.smarts', op: '-', value: 5 },
+              { path: 'stats.happiness', op: '-', value: 2 },
+            ],
+          },
         ],
       },
       {
         label: 'Stay in class',
-        effects: [{ path: 'stats.smarts', op: '+', value: 2 }],
+        outcomes: [
+          {
+            weight: 70,
+            narrative: 'You take notes you\'ll actually use later. Boring, but honest work.',
+            effects: [{ path: 'stats.smarts', op: '+', value: 3 }],
+          },
+          {
+            weight: 30,
+            narrative: 'You stay, but daydream the entire period. Pure self-flagellation for no reward.',
+            effects: [{ path: 'stats.happiness', op: '-', value: 2 }],
+          },
+        ],
       },
     ],
   },

@@ -22,7 +22,7 @@ careers, and systems on top without restructuring.
 
 ```bash
 npm run dev          # → http://localhost:5180  (5173 is reserved by another project on this machine)
-npm test             # 24 tests across the engine — must stay green
+npm test             # 77 tests across the engine — must stay green
 npm run build        # tsc -b && vite build
 ```
 
@@ -86,10 +86,38 @@ tests/engine/         # vitest unit + integration tests
 }
 ```
 
+A choice has EITHER `effects` (deterministic) OR `outcomes` (probabilistic) —
+never both. Probabilistic shape:
+
+```ts
+{
+  label: 'Fight back',
+  outcomes: [
+    {
+      weight: 50,
+      narrative: 'You throw the first punch. He goes down. You have a reputation now.',
+      effects: [{ path: 'stats.happiness', op: '+', value: 8 }],
+    },
+    {
+      weight: 35,
+      narrative: 'You don\'t stand a chance. Black eye, bruised pride.',
+      effects: [{ path: 'stats.health', op: '-', value: 8 }],
+    },
+    // ≥2 outcomes; weights are relative; sum must be > 0
+  ],
+}
+```
+
+`tests/engine/eventValidator.test.ts` re-runs `validateEvents(ALL_EVENTS)` on
+every CI run, so a malformed choice (both/neither, single-outcome list, empty
+narrative, zero weights) fails the build immediately.
+
 Effect ops: `+ - * / =` for arithmetic. Specials available: `addRelationship`,
 `removeRelationship`, `addAsset`, `addCrime`, `addEducation`,
 `completeEducation`, `setJob`, `leaveJob`, `die`. Add a new one in
-`effectsApplier.ts`.
+`effectsApplier.ts` — and if it's something the player should see in the
+StatFeedback toast, also extend `summarizeSpecial()` in the same file with
+a UI-ready label.
 
 **New career** — append to `CAREERS` in `src/game/data/careers.ts`, then write
 a `setJob` event referencing its `careerId` somewhere in
@@ -119,7 +147,7 @@ the name pool needs to be different (e.g. German), add a new pool to
 ## Testing
 
 ```bash
-npm test             # one-shot, all 24 tests
+npm test             # one-shot, all 77 tests
 npm run test:watch
 ```
 

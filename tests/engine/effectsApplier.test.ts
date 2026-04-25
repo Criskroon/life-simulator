@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { applyEffect, applyEffects } from '../../src/game/engine/effectsApplier';
+import {
+  applyEffect,
+  applyEffects,
+  applyEffectsWithFeedback,
+} from '../../src/game/engine/effectsApplier';
 import type { PlayerState } from '../../src/game/types/gameState';
 
 const baseState: PlayerState = {
@@ -101,5 +105,86 @@ describe('applyEffect', () => {
       payload: {},
     });
     expect(next).toBe(baseState);
+  });
+});
+
+describe('applyEffectsWithFeedback', () => {
+  it('records deltas for stat paths', () => {
+    const result = applyEffectsWithFeedback(baseState, [
+      { path: 'stats.happiness', op: '+', value: 5 },
+      { path: 'stats.health', op: '-', value: 10 },
+    ]);
+    const happy = result.deltas.find((d) => d.path === 'stats.happiness');
+    const health = result.deltas.find((d) => d.path === 'stats.health');
+    expect(happy).toEqual({ path: 'stats.happiness', before: 70, after: 75 });
+    expect(health).toEqual({ path: 'stats.health', before: 80, after: 70 });
+  });
+
+  it('records a money delta', () => {
+    const result = applyEffectsWithFeedback(baseState, [
+      { path: 'money', op: '+', value: 1000 },
+    ]);
+    expect(result.deltas).toEqual([{ path: 'money', before: 5000, after: 6000 }]);
+  });
+
+  it('coalesces multiple effects on the same path into one delta (before-first, after-last)', () => {
+    const result = applyEffectsWithFeedback(baseState, [
+      { path: 'stats.happiness', op: '+', value: 5 },
+      { path: 'stats.happiness', op: '+', value: 5 },
+    ]);
+    expect(result.deltas).toEqual([
+      { path: 'stats.happiness', before: 70, after: 80 },
+    ]);
+  });
+
+  it('omits no-change effects from the deltas list', () => {
+    const result = applyEffectsWithFeedback(baseState, [
+      { path: 'stats.happiness', op: '+', value: 0 },
+    ]);
+    expect(result.deltas).toEqual([]);
+  });
+
+  it('summarizes setJob with a UI-ready label', () => {
+    const result = applyEffectsWithFeedback(baseState, [
+      {
+        special: 'setJob',
+        payload: {
+          title: 'Cashier',
+          careerId: 'retail',
+          level: 0,
+          salary: 22000,
+          performance: 60,
+          yearsAtJob: 0,
+        },
+      },
+    ]);
+    expect(result.specials).toEqual([
+      { special: 'setJob', label: 'New job: Cashier' },
+    ]);
+  });
+
+  it('summarizes addRelationship using the relationship type', () => {
+    const result = applyEffectsWithFeedback(baseState, [
+      {
+        special: 'addRelationship',
+        payload: {
+          id: 'rel-spouse',
+          type: 'spouse',
+          firstName: 'Sara',
+          lastName: 'Lopez',
+          age: 28,
+          alive: true,
+          relationshipLevel: 90,
+        },
+      },
+    ]);
+    expect(result.specials[0]?.label).toBe('Married Sara Lopez');
+  });
+
+  it('does not mutate the original state', () => {
+    applyEffectsWithFeedback(baseState, [
+      { path: 'stats.happiness', op: '+', value: 5 },
+    ]);
+    expect(baseState.stats.happiness).toBe(70);
   });
 });

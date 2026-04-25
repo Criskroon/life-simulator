@@ -35,7 +35,8 @@ describe('integration: full life with fixed seed', () => {
       // Resolve every pending event by always picking the first choice.
       for (const event of pendingEvents) {
         const before = player.history.length;
-        player = resolveEvent(player, event, 0);
+        const result = resolveEvent(player, event, 0, tickRng);
+        player = result.state;
         expect(player.history.length).toBe(before + 1);
       }
 

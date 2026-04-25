@@ -119,10 +119,34 @@ export const CAREER_EVENTS: GameEvent[] = [
       },
       {
         label: 'Fight it',
-        effects: [
-          { path: 'money', op: '-', value: 2000 },
-          { path: 'stats.happiness', op: '-', value: 4 },
-          { special: 'leaveJob' },
+        outcomes: [
+          {
+            weight: 25,
+            narrative: 'Your lawyer earns her fee. The company pays a settlement to make the whole thing go away quietly.',
+            effects: [
+              { path: 'money', op: '+', value: 8000 },
+              { path: 'stats.happiness', op: '-', value: 2 },
+              { special: 'leaveJob' },
+            ],
+          },
+          {
+            weight: 50,
+            narrative: 'Six months of legal back-and-forth. You lose. Your reference is now worse than if you\'d just left.',
+            effects: [
+              { path: 'money', op: '-', value: 4000 },
+              { path: 'stats.happiness', op: '-', value: 8 },
+              { special: 'leaveJob' },
+            ],
+          },
+          {
+            weight: 25,
+            narrative: 'They settle out of court. You get a small payout and an NDA you\'ll regret signing.',
+            effects: [
+              { path: 'money', op: '+', value: 1500 },
+              { path: 'stats.happiness', op: '-', value: 6 },
+              { special: 'leaveJob' },
+            ],
+          },
         ],
       },
     ],
@@ -173,15 +197,55 @@ export const CAREER_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Invest savings into it',
-        effects: [
-          { path: 'money', op: '-', value: 2000 },
-          { path: 'money', op: '+', value: 6000 },
-          { path: 'stats.happiness', op: '+', value: 3 },
+        outcomes: [
+          {
+            weight: 35,
+            narrative: 'It works. Within months you\'re moving real product. Your friend even takes you out to celebrate.',
+            effects: [
+              { path: 'money', op: '+', value: 6000 },
+              { path: 'stats.happiness', op: '+', value: 6 },
+            ],
+          },
+          {
+            weight: 30,
+            narrative: 'You break even. The work was fine, the dream was bigger than the spreadsheet allowed.',
+            effects: [
+              { path: 'money', op: '-', value: 200 },
+              { path: 'stats.happiness', op: '+', value: 1 },
+            ],
+          },
+          {
+            weight: 25,
+            narrative: 'It flops. Your friend ghosts you when you ask about the books. The friendship doesn\'t survive.',
+            effects: [
+              { path: 'money', op: '-', value: 2500 },
+              { path: 'stats.happiness', op: '-', value: 6 },
+            ],
+          },
+          {
+            weight: 10,
+            narrative: 'It blows up — in a good way. You sell your stake for more than you ever made at your day job.',
+            effects: [
+              { path: 'money', op: '+', value: 25000 },
+              { path: 'stats.happiness', op: '+', value: 10 },
+            ],
+          },
         ],
       },
       {
         label: 'Politely decline',
-        effects: [{ path: 'stats.happiness', op: '-', value: 1 }],
+        outcomes: [
+          {
+            weight: 70,
+            narrative: 'Your friend goes ahead without you. Nothing comes of it, and you sleep just fine.',
+            effects: [],
+          },
+          {
+            weight: 30,
+            narrative: 'Two years later they\'re on a magazine cover. You watch from your cubicle and try not to scream.',
+            effects: [{ path: 'stats.happiness', op: '-', value: 6 }],
+          },
+        ],
       },
     ],
   },
@@ -197,14 +261,58 @@ export const CAREER_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Ask confidently',
-        effects: [
-          { path: 'job.salary', op: '+', value: 5000 },
-          { path: 'stats.happiness', op: '+', value: 4 },
+        outcomes: [
+          {
+            weight: 35,
+            narrative: 'Your boss listens, nods, and approves the full bump. You leave the meeting walking taller.',
+            effects: [
+              { path: 'job.salary', op: '+', value: 6000 },
+              { path: 'stats.happiness', op: '+', value: 6 },
+            ],
+          },
+          {
+            weight: 30,
+            narrative: 'They give you half what you asked for and a vague promise about "next quarter." You take it.',
+            effects: [
+              { path: 'job.salary', op: '+', value: 2500 },
+              { path: 'stats.happiness', op: '+', value: 1 },
+            ],
+          },
+          {
+            weight: 25,
+            narrative: 'Your boss talks about "budget constraints" for fifteen minutes. You leave with nothing and a sour taste.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 5 },
+              { path: 'job.performance', op: '-', value: 3 },
+            ],
+          },
+          {
+            weight: 10,
+            narrative: 'You\'re told you\'re "lucky to have a job in this market." You spend the rest of the week updating your résumé.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 8 },
+              { path: 'job.performance', op: '-', value: 6 },
+            ],
+          },
         ],
       },
       {
         label: 'Chicken out',
-        effects: [{ path: 'stats.happiness', op: '-', value: 3 }],
+        outcomes: [
+          {
+            weight: 70,
+            narrative: 'You walk past your boss\'s door three times and never knock. You stew about it for weeks.',
+            effects: [{ path: 'stats.happiness', op: '-', value: 4 }],
+          },
+          {
+            weight: 30,
+            narrative: 'You don\'t ask, but at the company review your manager bumps you anyway. Small mercies.',
+            effects: [
+              { path: 'job.salary', op: '+', value: 1500 },
+              { path: 'stats.happiness', op: '+', value: 1 },
+            ],
+          },
+        ],
       },
     ],
   },
@@ -304,15 +412,49 @@ export const CAREER_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Pick a side',
-        effects: [
-          { path: 'stats.happiness', op: '-', value: 4 },
-          { path: 'job.performance', op: '+', value: 2 },
+        outcomes: [
+          {
+            weight: 45,
+            narrative: 'You back the right horse. Their project wins out and you get credited as a key supporter.',
+            effects: [
+              { path: 'job.performance', op: '+', value: 6 },
+              { path: 'stats.happiness', op: '+', value: 2 },
+            ],
+          },
+          {
+            weight: 40,
+            narrative: 'You back the wrong horse. The other side wins and starts copying you on passive-aggressive emails.',
+            effects: [
+              { path: 'job.performance', op: '-', value: 5 },
+              { path: 'stats.happiness', op: '-', value: 5 },
+            ],
+          },
+          {
+            weight: 15,
+            narrative: 'Both sides escalate to HR. Everyone gets a mandatory mediation session, including you.',
+            effects: [
+              { path: 'job.performance', op: '-', value: 2 },
+              { path: 'stats.happiness', op: '-', value: 4 },
+            ],
+          },
         ],
       },
       {
         label: 'Stay neutral',
-        effects: [
-          { path: 'stats.happiness', op: '-', value: 1 },
+        outcomes: [
+          {
+            weight: 60,
+            narrative: 'Both sides try to recruit you. You dodge politely for weeks until the fight burns itself out.',
+            effects: [{ path: 'stats.happiness', op: '-', value: 2 }],
+          },
+          {
+            weight: 40,
+            narrative: 'Both sides decide you\'re a coward and stop including you in anything. You eat lunch alone for a month.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 5 },
+              { path: 'job.performance', op: '-', value: 3 },
+            ],
+          },
         ],
       },
     ],
@@ -380,17 +522,42 @@ export const CAREER_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Take the interview seriously',
-        effects: [
+        outcomes: [
           {
-            special: 'setJob',
-            payload: {
-              title: 'Customer Service Rep',
-              careerId: 'retail',
-              level: 0,
-              salary: 26000,
-              performance: 60,
-              yearsAtJob: 0,
-            },
+            weight: 55,
+            narrative: 'You nail every question. They offer you the role on the spot, no haggling.',
+            effects: [
+              { path: 'stats.happiness', op: '+', value: 5 },
+              {
+                special: 'setJob',
+                payload: {
+                  title: 'Customer Service Rep',
+                  careerId: 'retail',
+                  level: 0,
+                  salary: 26000,
+                  performance: 65,
+                  yearsAtJob: 0,
+                },
+              },
+            ],
+          },
+          {
+            weight: 25,
+            narrative: 'They liked you, but went with someone "more experienced." A polite rejection email arrives a week later.',
+            effects: [{ path: 'stats.happiness', op: '-', value: 4 }],
+          },
+          {
+            weight: 15,
+            narrative: 'You bomb the technical part. You can see it on the interviewer\'s face the moment it happens.',
+            effects: [
+              { path: 'stats.happiness', op: '-', value: 7 },
+              { path: 'stats.smarts', op: '-', value: 1 },
+            ],
+          },
+          {
+            weight: 5,
+            narrative: 'They ghost you. No email, no call, no closure. You refresh your inbox for a month.',
+            effects: [{ path: 'stats.happiness', op: '-', value: 6 }],
           },
         ],
       },

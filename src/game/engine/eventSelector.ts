@@ -4,16 +4,34 @@ import { evaluateAllConditions } from './conditionEvaluator';
 import type { Rng } from './rng';
 
 export interface SelectOptions {
-  /** Min and max number of events to surface for the year. */
+  /**
+   * Force a uniform `int(min, max)` count instead of the default weighted
+   * distribution. Set both to pin a specific count for tests/fixtures.
+   */
   minPerYear?: number;
   maxPerYear?: number;
   /** Bias toward picking events from distinct categories. */
   preferDiversity?: boolean;
+  /**
+   * Weighted distribution over how many events a year should produce.
+   * Default favors quiet years: 30% zero, 40% one, 25% two, 5% three.
+   * Ignored when both `minPerYear` and `maxPerYear` are provided.
+   */
+  countDistribution?: ReadonlyArray<{ count: number; weight: number }>;
 }
 
-const DEFAULTS: Required<SelectOptions> = {
-  minPerYear: 2,
-  maxPerYear: 5,
+/**
+ * The default count distribution. Picked to create rhythm — some years are
+ * quiet, others busy — without crowding the player into 4-5 events every year.
+ */
+const DEFAULT_COUNT_DISTRIBUTION: ReadonlyArray<{ count: number; weight: number }> = [
+  { count: 0, weight: 30 },
+  { count: 1, weight: 40 },
+  { count: 2, weight: 25 },
+  { count: 3, weight: 5 },
+];
+
+const DEFAULTS = {
   preferDiversity: true,
 };
 
@@ -33,9 +51,24 @@ export function getEligibleEvents(
 }
 
 /**
- * Pick 2-5 events for this year using weighted random selection. When
+ * Decide how many events should fire this year. Uses an explicit min/max
+ * range when both are provided (test fixtures pin counts that way); otherwise
+ * the weighted DEFAULT_COUNT_DISTRIBUTION (or a custom one) controls the pick.
+ */
+function pickEventCount(rng: Rng, options: SelectOptions): number {
+  if (options.minPerYear !== undefined && options.maxPerYear !== undefined) {
+    return rng.int(options.minPerYear, options.maxPerYear);
+  }
+  const distribution = options.countDistribution ?? DEFAULT_COUNT_DISTRIBUTION;
+  return rng.weighted(distribution.map((entry) => ({ item: entry.count, weight: entry.weight })));
+}
+
+/**
+ * Pick events for this year using weighted random selection. The default
+ * distribution favors quiet years (see DEFAULT_COUNT_DISTRIBUTION); pass
+ * `minPerYear`/`maxPerYear` to override with a uniform range. When
  * `preferDiversity` is on, after each pick we down-weight everything in the
- * same category so the year doesn't end up with five career events in a row.
+ * same category so a year doesn't end up with three career events in a row.
  */
 export function selectYearEvents(
   state: PlayerState,
@@ -44,10 +77,12 @@ export function selectYearEvents(
   options: SelectOptions = {},
 ): GameEvent[] {
   const opts = { ...DEFAULTS, ...options };
+  const targetCount = pickEventCount(rng, options);
+  if (targetCount <= 0) return [];
+
   const eligible = getEligibleEvents(state, events);
   if (eligible.length === 0) return [];
 
-  const targetCount = rng.int(opts.minPerYear, opts.maxPerYear);
   const picked: GameEvent[] = [];
   const remaining = [...eligible];
   const usedCategories: EventCategory[] = [];

@@ -1,7 +1,8 @@
-import type { GameEvent } from '../types/events';
+import type { GameEvent, ResolvedChoice } from '../types/events';
 import type { PlayerState } from '../types/gameState';
-import { applyEffects } from './effectsApplier';
+import { applyEffectsWithFeedback } from './effectsApplier';
 import { selectYearEvents } from './eventSelector';
+import { resolveChoice } from './outcomeResolver';
 import type { Rng } from './rng';
 import { renderTemplate } from './templates';
 
@@ -39,40 +40,64 @@ export function ageUp(
   return { state: next, pendingEvents };
 }
 
+export interface ResolveEventResult {
+  state: PlayerState;
+  resolved: ResolvedChoice;
+}
+
 /**
- * Apply choice effects to state and append a history entry. UI calls this
- * once per event the player resolves.
+ * Apply a choice to state and append a history entry. UI calls this once
+ * per event the player resolves. The `Rng` argument is used to weighted-pick
+ * among probabilistic outcomes when the choice has any.
  */
 export function resolveEvent(
   state: PlayerState,
   event: GameEvent,
   choiceIndex: number,
-): PlayerState {
+  rng: Rng,
+): ResolveEventResult {
   const choice = event.choices[choiceIndex];
-  if (!choice) return state;
+  if (!choice) {
+    return {
+      state,
+      resolved: { appliedEffects: [], narrative: null, deltas: [], specials: [] },
+    };
+  }
 
-  let next = applyEffects(state, choice.effects);
+  const picked = resolveChoice(choice, rng);
+  const renderedNarrative = picked.narrative ? renderTemplate(picked.narrative, state) : null;
+  const { state: afterEffects, deltas, specials } = applyEffectsWithFeedback(state, picked.effects);
 
-  const triggered = next.triggeredEventIds.includes(event.id)
-    ? next.triggeredEventIds
-    : [...next.triggeredEventIds, event.id];
+  const triggered = afterEffects.triggeredEventIds.includes(event.id)
+    ? afterEffects.triggeredEventIds
+    : [...afterEffects.triggeredEventIds, event.id];
 
-  next = {
-    ...next,
+  const next: PlayerState = {
+    ...afterEffects,
     triggeredEventIds: triggered,
     history: [
-      ...next.history,
+      ...afterEffects.history,
       {
-        year: next.currentYear,
-        age: next.age,
+        year: afterEffects.currentYear,
+        age: afterEffects.age,
         eventId: event.id,
-        description: renderTemplate(event.description, next),
+        description: renderTemplate(event.description, afterEffects),
         choiceLabel: choice.label,
+        ...(renderedNarrative ? { outcomeNarrative: renderedNarrative } : {}),
       },
     ],
   };
 
-  return next;
+  return {
+    state: next,
+    resolved: {
+      appliedEffects: picked.effects,
+      narrative: renderedNarrative,
+      deltas,
+      specials,
+      followUpEventId: picked.followUpEventId,
+    },
+  };
 }
 
 /**
