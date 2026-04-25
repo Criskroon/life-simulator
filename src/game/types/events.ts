@@ -60,6 +60,13 @@ export interface Choice {
   outcomes?: Outcome[];
   /** If set, after this choice resolves, queue the referenced event next. */
   followUpEventId?: string;
+  /**
+   * Optional money preview shown on the choice button. Negative = costs the
+   * player (gates affordability), positive = the player will receive money.
+   * Informative only — the actual money mutation lives in `effects` /
+   * `outcomes`. Set when the player should see "$2,500" on the button.
+   */
+  cost?: number;
 }
 
 /**

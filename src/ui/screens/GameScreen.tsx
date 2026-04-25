@@ -1,20 +1,33 @@
 import { useGameStore } from '../../game/state/gameStore';
 import { AgeButton } from '../components/AgeButton';
 import { EventModal } from '../components/EventModal';
+import { InsufficientFundsModal } from '../components/InsufficientFundsModal';
+import { ResolutionModal } from '../components/ResolutionModal';
 import { SidePanel } from '../components/SidePanel';
 import { StatBar } from '../components/StatBar';
-import { StatFeedback } from '../components/StatFeedback';
 import { TopBar } from '../components/TopBar';
 
 export function GameScreen() {
   const player = useGameStore((s) => s.player);
   const pendingEvents = useGameStore((s) => s.pendingEvents);
+  const lastResolution = useGameStore((s) => s.lastResolution);
+  const pendingInsufficientChoice = useGameStore((s) => s.pendingInsufficientChoice);
   const ageUpYear = useGameStore((s) => s.ageUpYear);
   const resolveCurrentEvent = useGameStore((s) => s.resolveCurrentEvent);
+  const clearLastResolution = useGameStore((s) => s.clearLastResolution);
+  const confirmInsufficientChoice = useGameStore((s) => s.confirmInsufficientChoice);
+  const cancelInsufficientChoice = useGameStore((s) => s.cancelInsufficientChoice);
 
   if (!player) return null;
 
   const currentEvent = pendingEvents[0];
+  // Modal stacking priority (only one shows at a time):
+  // 1. ResolutionModal — show outcome of last choice before anything else
+  // 2. InsufficientFundsModal — confirm/cancel before re-showing event
+  // 3. EventModal — show next event to resolve
+  const showResolution = lastResolution !== null;
+  const showInsufficient = !showResolution && pendingInsufficientChoice !== null;
+  const showEvent = !showResolution && !showInsufficient && Boolean(currentEvent);
 
   return (
     <div className="min-h-screen flex justify-center p-4 pb-32">
@@ -34,14 +47,19 @@ export function GameScreen() {
           <div className="max-w-phone mx-auto">
             <AgeButton
               onClick={ageUpYear}
-              disabled={pendingEvents.length > 0 || !player.alive}
+              disabled={
+                pendingEvents.length > 0 ||
+                !player.alive ||
+                lastResolution !== null ||
+                pendingInsufficientChoice !== null
+              }
               label="Age +1"
             />
           </div>
         </div>
       </div>
 
-      {currentEvent && (
+      {showEvent && currentEvent && (
         <EventModal
           event={currentEvent}
           player={player}
@@ -50,7 +68,16 @@ export function GameScreen() {
         />
       )}
 
-      <StatFeedback />
+      {showInsufficient && (
+        <InsufficientFundsModal
+          onConfirm={confirmInsufficientChoice}
+          onCancel={cancelInsufficientChoice}
+        />
+      )}
+
+      {showResolution && lastResolution && (
+        <ResolutionModal resolution={lastResolution} onClose={clearLastResolution} />
+      )}
     </div>
   );
 }

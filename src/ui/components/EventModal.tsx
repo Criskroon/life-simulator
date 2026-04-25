@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { getChoicePreview } from '../../game/engine/choicePreview';
 import type { GameEvent } from '../../game/types/events';
 import type { PlayerState } from '../../game/types/gameState';
 import { renderTemplate } from '../../game/engine/templates';
@@ -48,16 +49,39 @@ export function EventModal({ event, player, onChoose, remainingCount }: EventMod
         </div>
 
         <div className="px-5 pb-5 pt-2 flex flex-col gap-2 border-t border-slate-100">
-          {event.choices.map((choice, idx) => (
-            <button
-              key={`${event.id}-choice-${idx}`}
-              type="button"
-              onClick={() => onChoose(idx)}
-              className="text-left bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl px-4 py-3 transition active:scale-[0.99]"
-            >
-              {choice.label}
-            </button>
-          ))}
+          {event.choices.map((choice, idx) => {
+            const preview = getChoicePreview(choice, player);
+            const positive = preview.adjustedCost !== null && preview.adjustedCost > 0;
+            const negative = preview.adjustedCost !== null && preview.adjustedCost < 0;
+            return (
+              <button
+                key={`${event.id}-choice-${idx}`}
+                type="button"
+                onClick={() => onChoose(idx)}
+                className="text-left bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl px-4 py-3 transition active:scale-[0.99] flex items-center justify-between gap-3"
+              >
+                <span className="flex-1">{choice.label}</span>
+                {preview.costLabel && (
+                  <span
+                    className={`text-sm font-semibold whitespace-nowrap ${
+                      !preview.isAffordable
+                        ? 'text-rose-600'
+                        : positive
+                          ? 'text-emerald-600'
+                          : negative
+                            ? 'text-slate-600'
+                            : 'text-slate-600'
+                    }`}
+                  >
+                    {!preview.isAffordable && (
+                      <span className="mr-1" aria-hidden="true">⚠️</span>
+                    )}
+                    {preview.costLabel}
+                  </span>
+                )}
+              </button>
+            );
+          })}
           {remainingCount > 0 && (
             <div className="text-xs text-slate-400 text-center mt-2">
               {remainingCount} more event{remainingCount === 1 ? '' : 's'} this year

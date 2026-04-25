@@ -169,6 +169,7 @@ export const EDUCATION_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Accept and enroll',
+        cost: -8000,
         effects: [
           { path: 'money', op: '-', value: 8000 },
           {
@@ -321,6 +322,7 @@ export const EDUCATION_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Apply',
+        cost: -15000,
         effects: [
           { path: 'money', op: '-', value: 15000 },
           {
@@ -345,11 +347,18 @@ export const EDUCATION_EVENTS: GameEvent[] = [
   {
     id: 'edu_grad_school_complete',
     category: 'education',
-    weight: 12.0,
+    // Wide window + high weight: the previous (26-only, weight 12) version
+    // missed roughly a third of grad students because the event-selector
+    // rolls 30% quiet years and the 1-year window had no fallback. With
+    // five years and a dominant weight, a grad student almost always sees
+    // their own graduation. `oncePerLife` still prevents re-firing.
+    weight: 30.0,
     minAge: 26,
-    maxAge: 26,
+    maxAge: 30,
     oncePerLife: true,
-    conditions: [{ path: 'education', op: 'has', value: 'graduate' }],
+    conditions: [
+      { path: 'education', op: 'has', value: 'graduate' },
+    ],
     title: 'Graduate Degree Complete',
     description: 'Your defense is over. You\'re officially an expert in something almost no one else cares about.',
     choices: [

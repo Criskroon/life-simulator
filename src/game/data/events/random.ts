@@ -12,6 +12,7 @@ export const RANDOM_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Buy the ticket',
+        cost: -20,
         outcomes: [
           {
             weight: 75,
@@ -140,6 +141,7 @@ export const RANDOM_EVENTS: GameEvent[] = [
       },
       {
         label: 'Go to the ER',
+        cost: -800,
         effects: [
           { path: 'stats.health', op: '-', value: 2 },
           { path: 'money', op: '-', value: 800 },
@@ -177,6 +179,7 @@ export const RANDOM_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Join up',
+        cost: -600,
         effects: [
           { path: 'money', op: '-', value: 600 },
           { path: 'stats.health', op: '+', value: 6 },

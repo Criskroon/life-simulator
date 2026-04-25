@@ -331,6 +331,7 @@ export const CAREER_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Take a sabbatical',
+        cost: -5000,
         effects: [
           { path: 'stats.happiness', op: '+', value: 10 },
           { path: 'job.performance', op: '-', value: 10 },
@@ -393,6 +394,7 @@ export const CAREER_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Take the bonus',
+        cost: 3000,
         effects: [
           { path: 'money', op: '+', value: 3000 },
           { path: 'stats.happiness', op: '+', value: 5 },
@@ -498,6 +500,7 @@ export const CAREER_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Quit and figure it out',
+        cost: -3000,
         effects: [
           { path: 'stats.happiness', op: '+', value: 8 },
           { path: 'money', op: '-', value: 3000 },
@@ -587,6 +590,7 @@ export const CAREER_EVENTS: GameEvent[] = [
       },
       {
         label: 'Keep working',
+        cost: 5000,
         effects: [
           { path: 'stats.happiness', op: '-', value: 2 },
           { path: 'money', op: '+', value: 5000 },

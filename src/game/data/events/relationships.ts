@@ -81,6 +81,7 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
       },
       {
         label: 'Try couples therapy',
+        cost: -1500,
         effects: [
           { path: 'money', op: '-', value: 1500 },
           { path: 'stats.happiness', op: '-', value: 2 },
@@ -101,6 +102,7 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Get the ring',
+        cost: -4500,
         outcomes: [
           {
             weight: 70,
@@ -173,6 +175,7 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Yes, let\'s try',
+        cost: -3000,
         effects: [
           { path: 'money', op: '-', value: 3000 },
           { path: 'stats.happiness', op: '+', value: 8 },
@@ -210,6 +213,7 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Go all out',
+        cost: -400,
         effects: [
           { path: 'money', op: '-', value: 400 },
           { path: 'stats.happiness', op: '+', value: 6 },
@@ -234,6 +238,7 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Catch up over drinks',
+        cost: -60,
         effects: [
           { path: 'stats.happiness', op: '+', value: 4 },
           { path: 'money', op: '-', value: 60 },
@@ -257,6 +262,7 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Plan a romantic getaway',
+        cost: -2000,
         effects: [
           { path: 'money', op: '-', value: 2000 },
           { path: 'stats.happiness', op: '+', value: 9 },
@@ -264,6 +270,7 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
       },
       {
         label: 'Cook dinner at home',
+        cost: -80,
         effects: [
           { path: 'money', op: '-', value: 80 },
           { path: 'stats.happiness', op: '+', value: 4 },
