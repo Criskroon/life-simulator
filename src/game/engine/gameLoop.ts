@@ -5,6 +5,7 @@ import { applyEffectsWithFeedback } from './effectsApplier';
 import { selectYearEvents } from './eventSelector';
 import { enrichGeneratedRelationships } from './nameGenerator';
 import { resolveChoice } from './outcomeResolver';
+import { decayRelationships, ensureRelationshipState } from './relationshipEngine';
 import type { Rng } from './rng';
 import { renderTemplate } from './templates';
 
@@ -29,14 +30,17 @@ export function ageUp(
     return { state, pendingEvents: [] };
   }
 
-  let next: PlayerState = {
+  let next: PlayerState = ensureRelationshipState({
     ...state,
     age: state.age + 1,
     currentYear: state.currentYear + 1,
-  };
+  });
 
   next = applyPassiveEffects(next);
-  next = ageRelationships(next);
+  // Tier-system tick: ages every relationship by 1, expires casual exes
+  // past their decay year, fades unmaintained friends, caps significant
+  // exes. Replaces the old ageRelationships pass.
+  next = decayRelationships(next);
   // Refresh the activities budget for the new year. Anything left over from
   // last year evaporates; the player has to spend or lose them.
   next = { ...next, actionsRemainingThisYear: calculateActionBudget(next) };
@@ -184,26 +188,9 @@ function applyPassiveEffects(state: PlayerState): PlayerState {
     next = { ...next, stats: { ...next.stats, health: nextHealth } };
   }
 
-  // Friendships fade if not maintained — small decay each year.
-  next = {
-    ...next,
-    relationships: next.relationships.map((r) =>
-      r.type === 'friend'
-        ? { ...r, relationshipLevel: Math.max(0, r.relationshipLevel - 1) }
-        : r,
-    ),
-  };
-
+  // Friendship/casual-ex decay is handled by decayRelationships() in the
+  // tier-system tick — see the call in ageUp().
   return next;
-}
-
-function ageRelationships(state: PlayerState): PlayerState {
-  return {
-    ...state,
-    relationships: state.relationships.map((r) =>
-      r.alive ? { ...r, age: r.age + 1 } : r,
-    ),
-  };
 }
 
 /**

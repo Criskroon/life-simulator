@@ -22,7 +22,9 @@ const LIVES = 3000;
 const SEED = 7;
 
 const VALID_TYPES = new Set<RelationshipType>([
-  'father', 'mother', 'sibling', 'child', 'friend', 'partner', 'spouse',
+  'father', 'mother', 'sibling', 'child',
+  'friend', 'partner', 'fiance', 'spouse',
+  'casualEx', 'significantEx',
 ]);
 
 interface Violation {

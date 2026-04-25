@@ -103,6 +103,28 @@ describe('applyEffect', () => {
     }
   });
 
+  it('routes a partner addRelationship through the slot model — only one partner at a time', () => {
+    const payload = {
+      id: 'rel-date-partner',
+      type: 'partner',
+      firstName: 'A',
+      lastName: 'B',
+      age: 25,
+      alive: true,
+      relationshipLevel: 60,
+    };
+    let state = baseState;
+    for (let i = 0; i < 5; i++) {
+      state = applyEffect(state, { special: 'addRelationship', payload });
+    }
+    const partners = state.relationships.filter((r) => r.type === 'partner');
+    const casualExes = state.relationships.filter((r) => r.type === 'casualEx');
+    // Slot rule: a single partner survives, the four prior ones are
+    // demoted to casualEx (E2 fix).
+    expect(partners).toHaveLength(1);
+    expect(casualExes).toHaveLength(4);
+  });
+
   it('preserves the author-supplied id as baseId on addRelationship', () => {
     const next = applyEffect(baseState, {
       special: 'addRelationship',
@@ -120,7 +142,10 @@ describe('applyEffect', () => {
     expect(next.relationships[0]?.id).not.toBe('rel-date-partner');
   });
 
-  it('removeRelationship by baseId wipes every record sharing that base', () => {
+  it('removeRelationship by baseId wipes every record sharing that base across slots and lists', () => {
+    // Five partner adds with the same baseId → one in the partner slot,
+    // four demoted to casualEx (slot model). removeRelationship by base
+    // must clear all of them, not just the slot.
     const payload = {
       id: 'rel-date-partner',
       type: 'partner',
@@ -166,6 +191,7 @@ describe('applyEffect', () => {
     state = applyEffect(state, { special: 'addRelationship', payload: partnerPayload });
     state = applyEffect(state, { special: 'addRelationship', payload: friendPayload });
     state = applyEffect(state, { special: 'addRelationship', payload: partnerPayload });
+    // Slot model: 1 active partner + 1 casual ex (displaced) + 1 friend = 3.
     expect(state.relationships).toHaveLength(3);
 
     state = applyEffect(state, {

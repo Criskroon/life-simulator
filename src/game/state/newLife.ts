@@ -2,7 +2,16 @@ import { COUNTRIES, getCountry } from '../data/countries';
 import { calculateActionBudget } from '../engine/actionBudget';
 import { getNamePool } from '../engine/countryEngine';
 import { randomFirstName, randomSurname } from '../data/names';
-import type { Gender, PlayerState, Relationship } from '../types/gameState';
+import {
+  emptyRelationshipState,
+  syncLegacyView,
+} from '../engine/relationshipEngine';
+import type {
+  FamilyMember,
+  Gender,
+  PlayerState,
+  RelationshipState,
+} from '../types/gameState';
 import type { Rng } from '../engine/rng';
 
 export interface NewLifeOptions {
@@ -31,7 +40,7 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
 
   const currentYear = new Date().getFullYear();
 
-  const parents: Relationship[] = [
+  const family: FamilyMember[] = [
     {
       id: 'rel-father',
       baseId: 'rel-father',
@@ -41,6 +50,7 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
       age: 28 + rng.int(0, 10),
       alive: true,
       relationshipLevel: 70,
+      metYear: currentYear,
     },
     {
       id: 'rel-mother',
@@ -51,13 +61,14 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
       age: 26 + rng.int(0, 10),
       alive: true,
       relationshipLevel: 75,
+      metYear: currentYear,
     },
   ];
 
   // 50% chance of having a sibling — keeps childhood events that depend on
   // siblings interesting without forcing them on every life.
   if (rng.next() < 0.5) {
-    parents.push({
+    family.push({
       id: 'rel-sibling',
       baseId: 'rel-sibling',
       type: 'sibling',
@@ -66,8 +77,11 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
       age: rng.int(0, 8),
       alive: true,
       relationshipLevel: 65,
+      metYear: currentYear,
     });
   }
+
+  const relationshipState: RelationshipState = { ...emptyRelationshipState(), family };
 
   const player: PlayerState = {
     id: `life-${Date.now()}-${rng.int(1000, 9999)}`,
@@ -97,7 +111,8 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
         gpa: 70,
       },
     ],
-    relationships: parents,
+    relationships: syncLegacyView(relationshipState),
+    relationshipState,
     assets: [],
     criminalRecord: [],
     history: [

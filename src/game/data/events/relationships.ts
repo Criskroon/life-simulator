@@ -101,7 +101,13 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
     minAge: 22,
     maxAge: 50,
     oncePerLife: true,
-    conditions: [{ path: 'relationships', op: 'has', value: 'partner' }],
+    // E1 fix: gate the propose path on having no spouse already. The slot
+    // model in addSpouse force-divorces on collision, but conditioning here
+    // keeps the narrative honest — you don't "propose" while still married.
+    conditions: [
+      { path: 'relationships', op: 'has', value: 'partner' },
+      { path: 'relationships', op: 'lacks', value: 'spouse' },
+    ],
     title: 'Propose?',
     description: 'You\'ve been together a while. The thought won\'t go away.',
     choices: [

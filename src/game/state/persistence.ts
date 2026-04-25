@@ -1,4 +1,8 @@
 import { calculateActionBudget } from '../engine/actionBudget';
+import {
+  migrateLegacyRelationships,
+  syncLegacyView,
+} from '../engine/relationshipEngine';
 import type { PlayerState } from '../types/gameState';
 
 /**
@@ -76,7 +80,7 @@ function migrate(state: PlayerState): PlayerState {
   // re-fired (e.g. multiple `rel-gym-friend` entries). `removeRelationship`
   // filters by id and would wipe all clones at once; rename duplicates so
   // each row is independently addressable.
-  next = { ...next, relationships: dedupeRelationshipIds(next.relationships) };
+  next = { ...next, relationships: dedupeRelationshipIds(next.relationships ?? []) };
 
   // 2026-04: removeRelationship now matches on baseId so events can target
   // every record of the same base. Saves written before this change have
@@ -84,6 +88,24 @@ function migrate(state: PlayerState): PlayerState {
   // remove-by-base logic would no-op on them. Derive baseId by stripping
   // the unique-id suffix the addRelationship handler appends.
   next = { ...next, relationships: backfillBaseIds(next.relationships) };
+
+  // 2026-04 (tier system): if the save predates the slot model, build the
+  // structured `relationshipState` from the flat array and keep the array
+  // as the synced legacy view. The migration policy:
+  //   - first spouse seats the spouse slot; additional spouses (E1
+  //     bug residue) drop into significantExes
+  //   - first partner seats the partner slot; additional partners
+  //     (E2 zombie partners) drop into casualExes
+  //   - first fiance seats the fiance slot; rest into significantExes
+  //   - family/friends/casualEx/significantEx flow into their lists
+  if (!next.relationshipState) {
+    const rs = migrateLegacyRelationships(next.relationships);
+    next = {
+      ...next,
+      relationshipState: rs,
+      relationships: syncLegacyView(rs),
+    };
+  }
 
   return next;
 }

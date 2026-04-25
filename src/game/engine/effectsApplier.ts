@@ -3,12 +3,31 @@ import type {
   Asset,
   CrimeRecord,
   EducationRecord,
+  FamilyMember,
+  Friend,
   Job,
+  Person,
   PlayerState,
   Relationship,
 } from '../types/gameState';
 import { adjustPrice, adjustSalary, getCurrentCountry } from './countryEngine';
 import { getAtPath, setAtPath } from './paths';
+import {
+  addCasualEx,
+  addFamilyMember,
+  addFiance,
+  addFriend,
+  addPartner,
+  addSignificantEx,
+  addSpouse,
+  breakUpPartner,
+  divorceSpouse,
+  endEngagement,
+  ensureRelationshipState,
+  loseFriend,
+  removePersonByBase,
+  withRelationshipState,
+} from './relationshipEngine';
 
 const STAT_PATHS = new Set([
   'stats.health',
@@ -34,36 +53,163 @@ function clampIfBounded(path: string, value: number): number {
 type SpecialHandler = (state: PlayerState, payload: Record<string, unknown>) => PlayerState;
 
 /**
+ * Mint a stable per-instance id from the author-supplied baseId. Activities
+ * re-fire over a life so authored ids like `rel-gym-friend` collide if used
+ * verbatim; the year + family-list size acts as a cheap monotonic seed.
+ */
+function mintPersonId(state: PlayerState, baseId: string): string {
+  const rs = state.relationshipState;
+  const total = rs
+    ? rs.family.length +
+      rs.friends.length +
+      rs.significantExes.length +
+      rs.casualExes.length +
+      (rs.partner ? 1 : 0) +
+      (rs.fiance ? 1 : 0) +
+      (rs.spouse ? 1 : 0)
+    : (state.relationships?.length ?? 0);
+  return `${baseId}-y${state.currentYear}-n${total}`;
+}
+
+function payloadToPerson(state: PlayerState, payload: Record<string, unknown>): Person {
+  const baseId = (payload.id as string | undefined) ?? (payload.baseId as string | undefined) ?? 'rel';
+  return {
+    id: mintPersonId(state, baseId),
+    baseId,
+    firstName: (payload.firstName as string | undefined) ?? '',
+    lastName: (payload.lastName as string | undefined) ?? '',
+    age: (payload.age as number | undefined) ?? 0,
+    alive: (payload.alive as boolean | undefined) ?? true,
+    relationshipLevel: (payload.relationshipLevel as number | undefined) ?? 50,
+    metYear: state.currentYear,
+  };
+}
+
+/**
  * Registry pattern so new special effects can be added without touching the
  * applier itself. Add an entry, ship a new event — that's it.
  */
 const SPECIAL_HANDLERS: Record<string, SpecialHandler> = {
+  // -------------------------------------------------------------------
+  // Tier-system slot operations (preferred for new content).
+  // -------------------------------------------------------------------
+  addPartner: (state, payload) => {
+    const guarded = ensureRelationshipState(state);
+    const person = payloadToPerson(guarded, payload);
+    return addPartner(guarded, person, guarded.currentYear);
+  },
+
+  addFiance: (state, payload) => {
+    const guarded = ensureRelationshipState(state);
+    const person = payloadToPerson(guarded, payload);
+    return addFiance(guarded, person, guarded.currentYear);
+  },
+
+  addSpouse: (state, payload) => {
+    const guarded = ensureRelationshipState(state);
+    const person = payloadToPerson(guarded, payload);
+    return addSpouse(guarded, person, guarded.currentYear);
+  },
+
+  addCasualEx: (state, payload) => {
+    const guarded = ensureRelationshipState(state);
+    const person = payloadToPerson(guarded, payload);
+    const formerSlot = (payload.formerSlot as 'partner' | 'fiance' | undefined) ?? 'partner';
+    return addCasualEx(guarded, person, guarded.currentYear, formerSlot);
+  },
+
+  addSignificantEx: (state, payload) => {
+    const guarded = ensureRelationshipState(state);
+    const person = payloadToPerson(guarded, payload);
+    const formerSlot = (payload.formerSlot as 'fiance' | 'spouse' | undefined) ?? 'spouse';
+    return addSignificantEx(guarded, person, guarded.currentYear, formerSlot);
+  },
+
+  addFriend: (state, payload) => {
+    const guarded = ensureRelationshipState(state);
+    const person = payloadToPerson(guarded, payload);
+    const friend: Friend = {
+      ...person,
+      type: 'friend',
+      yearsSinceContact: 0,
+      isBestFriend: Boolean(payload.isBestFriend),
+    };
+    return addFriend(guarded, friend, guarded.currentYear);
+  },
+
+  addFamilyMember: (state, payload) => {
+    const guarded = ensureRelationshipState(state);
+    const person = payloadToPerson(guarded, payload);
+    const memberType =
+      (payload.memberType as FamilyMember['type'] | undefined) ??
+      (payload.type as FamilyMember['type'] | undefined) ??
+      'sibling';
+    const member: FamilyMember = { ...person, type: memberType };
+    return addFamilyMember(guarded, member);
+  },
+
+  breakUpPartner: (state) => breakUpPartner(state, state.currentYear),
+  endEngagement: (state) => endEngagement(state, state.currentYear),
+  divorceSpouse: (state) => divorceSpouse(state, state.currentYear),
+
+  loseFriend: (state, payload) => {
+    const id = (payload.id as string | undefined) ?? (payload.baseId as string | undefined);
+    if (!id) return state;
+    return loseFriend(state, id);
+  },
+
+  // -------------------------------------------------------------------
+  // Legacy shim — `addRelationship` routes through slot logic by type.
+  // Kept so the 56 existing call-sites and any new content authored
+  // against the old API continue to work. The slot enforcement is what
+  // makes E1 (multi-spouse) impossible by construction even when an
+  // event still uses the legacy shape.
+  // -------------------------------------------------------------------
   addRelationship: (state, payload) => {
     const rel = payload as unknown as Relationship;
-    // Activities re-fire over a life, so authored ids like `rel-gym-friend`
-    // would collide. Mint a deterministic, unique id from year + relationship
-    // index so each addRelationship produces a distinct record. The author-
-    // supplied id is preserved as `baseId` so removeRelationship can target
-    // every record sharing that base (events sweep "all date-partners" etc.).
-    const baseId = rel.baseId ?? rel.id ?? 'rel';
-    const uniqueId = `${baseId}-y${state.currentYear}-n${state.relationships.length}`;
-    return {
-      ...state,
-      relationships: [...state.relationships, { ...rel, id: uniqueId, baseId }],
-    };
+    const guarded = ensureRelationshipState(state);
+    const person = payloadToPerson(guarded, payload);
+
+    switch (rel.type) {
+      case 'partner':
+        return addPartner(guarded, person, guarded.currentYear);
+      case 'fiance':
+        return addFiance(guarded, person, guarded.currentYear);
+      case 'spouse':
+        return addSpouse(guarded, person, guarded.currentYear);
+      case 'friend': {
+        const friend: Friend = { ...person, type: 'friend', yearsSinceContact: 0 };
+        return addFriend(guarded, friend, guarded.currentYear);
+      }
+      case 'father':
+      case 'mother':
+      case 'sibling':
+      case 'child': {
+        const member: FamilyMember = { ...person, type: rel.type };
+        return addFamilyMember(guarded, member);
+      }
+      case 'casualEx':
+        return addCasualEx(guarded, person, guarded.currentYear, 'partner');
+      case 'significantEx':
+        return addSignificantEx(guarded, person, guarded.currentYear, 'spouse');
+      default: {
+        // Unknown type — fall back to a friend so the player isn't silently
+        // dropped on the floor.
+        const friend: Friend = { ...person, type: 'friend', yearsSinceContact: 0 };
+        return addFriend(guarded, friend, guarded.currentYear);
+      }
+    }
   },
 
   removeRelationship: (state, payload) => {
     const id = payload.id as string | undefined;
     if (!id) return state;
-    return {
-      ...state,
-      relationships: state.relationships.filter(
-        (r) => r.baseId !== id && r.id !== id,
-      ),
-    };
+    return removePersonByBase(state, id);
   },
 
+  // -------------------------------------------------------------------
+  // Non-relationship specials (unchanged).
+  // -------------------------------------------------------------------
   addAsset: (state, payload) => {
     const asset = payload as unknown as Asset;
     const cost = typeof asset.purchasePrice === 'number' ? asset.purchasePrice : 0;
@@ -115,6 +261,10 @@ const SPECIAL_HANDLERS: Record<string, SpecialHandler> = {
     causeOfDeath: (payload.cause as string | undefined) ?? 'unknown causes',
   }),
 };
+
+// Re-export so the relationship engine's withRelationshipState helper
+// stays callable from places that already import via this module.
+export { withRelationshipState };
 
 /**
  * Country-adjust an event's raw value. Money paths use the cost-of-living
@@ -210,15 +360,49 @@ function summarizeSpecial(effect: Effect, state: PlayerState): SpecialSummary | 
       const name = [rel.firstName, rel.lastName].filter(Boolean).join(' ').trim();
       const labelByType: Record<string, string> = {
         spouse: name ? `Married ${name}` : 'Got married',
+        fiance: name ? `Engaged to ${name}` : 'Got engaged',
         partner: name ? `Started dating ${name}` : 'New partner',
         friend: name ? `Befriended ${name}` : 'New friend',
         child: name ? `Welcomed ${name}` : 'Had a child',
       };
-      return { special: 'addRelationship', label: labelByType[rel.type ?? 'friend'] ?? `New relationship: ${name || rel.type}` };
+      return {
+        special: 'addRelationship',
+        label:
+          labelByType[rel.type ?? 'friend'] ??
+          `New relationship: ${name || rel.type}`,
+      };
     }
+    case 'addPartner': {
+      const p = payload as Partial<Person>;
+      const name = [p.firstName, p.lastName].filter(Boolean).join(' ').trim();
+      return { special: 'addPartner', label: name ? `Started dating ${name}` : 'New partner' };
+    }
+    case 'addFiance': {
+      const p = payload as Partial<Person>;
+      const name = [p.firstName, p.lastName].filter(Boolean).join(' ').trim();
+      return { special: 'addFiance', label: name ? `Engaged to ${name}` : 'Got engaged' };
+    }
+    case 'addSpouse': {
+      const p = payload as Partial<Person>;
+      const name = [p.firstName, p.lastName].filter(Boolean).join(' ').trim();
+      return { special: 'addSpouse', label: name ? `Married ${name}` : 'Got married' };
+    }
+    case 'addFriend': {
+      const p = payload as Partial<Person>;
+      const name = [p.firstName, p.lastName].filter(Boolean).join(' ').trim();
+      return { special: 'addFriend', label: name ? `Befriended ${name}` : 'New friend' };
+    }
+    case 'breakUpPartner':
+      return { special: 'breakUpPartner', label: 'Broke up' };
+    case 'endEngagement':
+      return { special: 'endEngagement', label: 'Engagement called off' };
+    case 'divorceSpouse':
+      return { special: 'divorceSpouse', label: 'Divorced' };
+    case 'loseFriend':
+      return { special: 'loseFriend', label: 'Drifted apart from a friend' };
     case 'removeRelationship': {
       const id = payload.id as string | undefined;
-      const rel = id ? state.relationships.find((r) => r.id === id) : null;
+      const rel = id ? state.relationships.find((r) => r.id === id || r.baseId === id) : null;
       const name = rel ? `${rel.firstName} ${rel.lastName}`.trim() : 'someone';
       return { special: 'removeRelationship', label: `Lost touch with ${name}` };
     }

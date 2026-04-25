@@ -129,6 +129,39 @@ describe('persistence migrate()', () => {
     expect(baseIds).toEqual(['rel-date-partner', 'rel-mother', 'rel-gym-friend']);
   });
 
+  it('builds a tier-system relationshipState from a flat legacy save', async () => {
+    const adapter = createMemoryStorageAdapter();
+    setStorageAdapter(adapter);
+    const state = makeState({
+      // E1 residue: two `rel-spouse` rows on the same save (the bug we fixed).
+      // E2 residue: lingering activity partners alongside the spouse.
+      relationships: [
+        { id: 'rel-spouse', type: 'spouse', firstName: 'Esmee', lastName: 'X', age: 30, alive: true, relationshipLevel: 80 },
+        { id: 'rel-spouse-2', type: 'spouse', firstName: 'Kaj', lastName: 'X', age: 31, alive: true, relationshipLevel: 70 },
+        { id: 'rel-activity-partner-y2050-n3', type: 'partner', firstName: 'Lev', lastName: 'Y', age: 28, alive: true, relationshipLevel: 60 },
+        { id: 'rel-activity-partner-y2051-n4', type: 'partner', firstName: 'Sam', lastName: 'Y', age: 29, alive: true, relationshipLevel: 55 },
+        { id: 'rel-mother', type: 'mother', firstName: 'M', lastName: 'X', age: 55, alive: true, relationshipLevel: 80 },
+      ],
+    });
+    await adapter.set(SAVE_KEY, JSON.stringify(state));
+
+    const loaded = await loadGame();
+    expect(loaded).not.toBeNull();
+    expect(loaded!.relationshipState).toBeDefined();
+    const rs = loaded!.relationshipState!;
+
+    // E1: only one spouse seated, the rest into significantExes.
+    expect(rs.spouse?.firstName).toBe('Esmee');
+    expect(rs.significantExes).toHaveLength(1);
+    expect(rs.significantExes[0]?.firstName).toBe('Kaj');
+
+    // E2: only one partner seated, the rest into casualExes.
+    expect(rs.partner?.firstName).toBe('Lev');
+    expect(rs.casualExes).toHaveLength(1);
+
+    expect(rs.family.map((m) => m.firstName)).toContain('M');
+  });
+
   it('round-trips a clean save without rewriting unique ids', async () => {
     const state = makeState({
       relationships: [

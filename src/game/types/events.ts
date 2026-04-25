@@ -18,6 +18,19 @@ export interface Condition {
 export type EffectOp = '+' | '-' | '*' | '/' | '=';
 
 export type SpecialEffect =
+  // Tier-system slot operations (preferred for new content).
+  | 'addPartner'
+  | 'addFiance'
+  | 'addSpouse'
+  | 'addCasualEx'
+  | 'addSignificantEx'
+  | 'addFriend'
+  | 'addFamilyMember'
+  | 'breakUpPartner'
+  | 'endEngagement'
+  | 'divorceSpouse'
+  | 'loseFriend'
+  // Legacy specials — kept as shims that route through the slot logic.
   | 'addRelationship'
   | 'removeRelationship'
   | 'addAsset'
