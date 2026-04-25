@@ -231,8 +231,6 @@ export const CHILDHOOD_EVENTS: GameEvent[] = [
             payload: {
               id: 'rel-park-friend',
               type: 'friend',
-              firstName: 'Alex',
-              lastName: 'Park',
               age: 8,
               alive: true,
               relationshipLevel: 60,

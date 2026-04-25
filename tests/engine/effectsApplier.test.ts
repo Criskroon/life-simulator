@@ -103,6 +103,101 @@ describe('applyEffect', () => {
     }
   });
 
+  it('preserves the author-supplied id as baseId on addRelationship', () => {
+    const next = applyEffect(baseState, {
+      special: 'addRelationship',
+      payload: {
+        id: 'rel-date-partner',
+        type: 'partner',
+        firstName: 'X',
+        lastName: 'Y',
+        age: 25,
+        alive: true,
+        relationshipLevel: 60,
+      },
+    });
+    expect(next.relationships[0]?.baseId).toBe('rel-date-partner');
+    expect(next.relationships[0]?.id).not.toBe('rel-date-partner');
+  });
+
+  it('removeRelationship by baseId wipes every record sharing that base', () => {
+    const payload = {
+      id: 'rel-date-partner',
+      type: 'partner',
+      firstName: 'X',
+      lastName: 'Y',
+      age: 25,
+      alive: true,
+      relationshipLevel: 60,
+    };
+    let state = baseState;
+    for (let i = 0; i < 5; i++) {
+      state = applyEffect(state, { special: 'addRelationship', payload });
+    }
+    expect(state.relationships).toHaveLength(5);
+
+    state = applyEffect(state, {
+      special: 'removeRelationship',
+      payload: { id: 'rel-date-partner' },
+    });
+    expect(state.relationships).toHaveLength(0);
+  });
+
+  it('removeRelationship by baseId only removes the matching base, not others', () => {
+    const partnerPayload = {
+      id: 'rel-date-partner',
+      type: 'partner',
+      firstName: 'A',
+      lastName: 'B',
+      age: 25,
+      alive: true,
+      relationshipLevel: 60,
+    };
+    const friendPayload = {
+      id: 'rel-gym-friend',
+      type: 'friend',
+      firstName: 'C',
+      lastName: 'D',
+      age: 26,
+      alive: true,
+      relationshipLevel: 55,
+    };
+    let state = baseState;
+    state = applyEffect(state, { special: 'addRelationship', payload: partnerPayload });
+    state = applyEffect(state, { special: 'addRelationship', payload: friendPayload });
+    state = applyEffect(state, { special: 'addRelationship', payload: partnerPayload });
+    expect(state.relationships).toHaveLength(3);
+
+    state = applyEffect(state, {
+      special: 'removeRelationship',
+      payload: { id: 'rel-date-partner' },
+    });
+    expect(state.relationships).toHaveLength(1);
+    expect(state.relationships[0]?.baseId).toBe('rel-gym-friend');
+  });
+
+  it('removeRelationship still matches on full id for legacy rows without baseId', () => {
+    const stateWithLegacyRow = {
+      ...baseState,
+      relationships: [
+        {
+          id: 'rel-mother',
+          type: 'mother' as const,
+          firstName: 'Mary',
+          lastName: 'X',
+          age: 55,
+          alive: true,
+          relationshipLevel: 80,
+        },
+      ],
+    };
+    const next = applyEffect(stateWithLegacyRow, {
+      special: 'removeRelationship',
+      payload: { id: 'rel-mother' },
+    });
+    expect(next.relationships).toHaveLength(0);
+  });
+
   it('runs the special `die` handler', () => {
     const next = applyEffect(baseState, {
       special: 'die',

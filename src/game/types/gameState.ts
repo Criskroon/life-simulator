@@ -29,6 +29,13 @@ export interface Job {
 
 export interface Relationship {
   id: string;
+  /**
+   * The author-supplied id from the source event/activity payload, before
+   * addRelationship mints a unique per-instance id. removeRelationship
+   * matches on baseId so events can target every record of the same base
+   * (e.g. wipe all `rel-date-partner` entries on a breakup).
+   */
+  baseId?: string;
   type: RelationshipType;
   firstName: string;
   lastName: string;

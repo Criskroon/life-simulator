@@ -42,10 +42,15 @@ const SPECIAL_HANDLERS: Record<string, SpecialHandler> = {
     const rel = payload as unknown as Relationship;
     // Activities re-fire over a life, so authored ids like `rel-gym-friend`
     // would collide. Mint a deterministic, unique id from year + relationship
-    // index so each addRelationship produces a distinct record.
-    const baseId = rel.id || 'rel';
+    // index so each addRelationship produces a distinct record. The author-
+    // supplied id is preserved as `baseId` so removeRelationship can target
+    // every record sharing that base (events sweep "all date-partners" etc.).
+    const baseId = rel.baseId ?? rel.id ?? 'rel';
     const uniqueId = `${baseId}-y${state.currentYear}-n${state.relationships.length}`;
-    return { ...state, relationships: [...state.relationships, { ...rel, id: uniqueId }] };
+    return {
+      ...state,
+      relationships: [...state.relationships, { ...rel, id: uniqueId, baseId }],
+    };
   },
 
   removeRelationship: (state, payload) => {
@@ -53,7 +58,9 @@ const SPECIAL_HANDLERS: Record<string, SpecialHandler> = {
     if (!id) return state;
     return {
       ...state,
-      relationships: state.relationships.filter((r) => r.id !== id),
+      relationships: state.relationships.filter(
+        (r) => r.baseId !== id && r.id !== id,
+      ),
     };
   },
 

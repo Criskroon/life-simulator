@@ -24,8 +24,6 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
                 payload: {
                   id: 'rel-date-partner',
                   type: 'partner',
-                  firstName: 'Jordan',
-                  lastName: 'Reyes',
                   age: 24,
                   alive: true,
                   relationshipLevel: 60,
@@ -75,8 +73,15 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
         label: 'End it',
         effects: [
           { path: 'stats.happiness', op: '-', value: 8 },
+          // Sweep every partner-base the player could have picked up. Each
+          // removeRelationship now wipes all records sharing the base, so
+          // even if rel-vacation-romance fired three times across activities,
+          // one call here cleans them all out.
           { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
           { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
+          { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
+          { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
+          { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
         ],
       },
       {
@@ -110,13 +115,18 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
             effects: [
               { path: 'money', op: '-', value: 4500 },
               { path: 'stats.happiness', op: '+', value: 14 },
+              // Partner becomes spouse — sweep every partner-base so old
+              // dating records don't hang around alongside the marriage.
+              { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
+              { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
+              { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
+              { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
+              { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
               {
                 special: 'addRelationship',
                 payload: {
                   id: 'rel-spouse',
                   type: 'spouse',
-                  firstName: 'Jordan',
-                  lastName: 'Reyes',
                   age: 28,
                   alive: true,
                   relationshipLevel: 88,
@@ -130,13 +140,16 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
             effects: [
               { path: 'money', op: '-', value: 4500 },
               { path: 'stats.happiness', op: '+', value: 5 },
+              { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
+              { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
+              { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
+              { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
+              { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
               {
                 special: 'addRelationship',
                 payload: {
                   id: 'rel-spouse',
                   type: 'spouse',
-                  firstName: 'Jordan',
-                  lastName: 'Reyes',
                   age: 28,
                   alive: true,
                   relationshipLevel: 70,
@@ -153,6 +166,8 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
               { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
               { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
               { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
+              { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
+              { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
             ],
           },
         ],
@@ -185,8 +200,6 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
             payload: {
               id: 'rel-child-1',
               type: 'child',
-              firstName: 'Sam',
-              lastName: '',
               age: 0,
               alive: true,
               relationshipLevel: 90,
@@ -342,8 +355,6 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
             payload: {
               id: 'rel-blind-date',
               type: 'partner',
-              firstName: 'Avery',
-              lastName: 'Stone',
               age: 32,
               alive: true,
               relationshipLevel: 50,
@@ -375,13 +386,16 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
         label: 'Yes — yes, of course',
         effects: [
           { path: 'stats.happiness', op: '+', value: 14 },
+          { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
+          { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
+          { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
+          { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
+          { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
           {
             special: 'addRelationship',
             payload: {
               id: 'rel-spouse',
               type: 'spouse',
-              firstName: 'Jordan',
-              lastName: 'Reyes',
               age: 28,
               alive: true,
               relationshipLevel: 90,
@@ -397,13 +411,16 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
             narrative: 'They give you the space. A month later you say yes, calmer this time. The wedding is smaller.',
             effects: [
               { path: 'stats.happiness', op: '+', value: 6 },
+              { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
+              { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
+              { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
+              { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
+              { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
               {
                 special: 'addRelationship',
                 payload: {
                   id: 'rel-spouse',
                   type: 'spouse',
-                  firstName: 'Jordan',
-                  lastName: 'Reyes',
                   age: 28,
                   alive: true,
                   relationshipLevel: 75,
@@ -419,6 +436,8 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
               { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
               { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
               { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
+              { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
+              { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
             ],
           },
           {
@@ -437,6 +456,8 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
           { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
           { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
           { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
+          { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
+          { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
         ],
       },
     ],

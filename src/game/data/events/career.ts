@@ -171,8 +171,6 @@ export const CAREER_EVENTS: GameEvent[] = [
             payload: {
               id: 'rel-coworker-partner',
               type: 'partner',
-              firstName: 'Riley',
-              lastName: 'Chen',
               age: 28,
               alive: true,
               relationshipLevel: 65,

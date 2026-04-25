@@ -267,7 +267,7 @@ function buildReport(
 
   lines.push('## Section A — Test Status');
   lines.push('');
-  lines.push('- `npm test` — **127/127 green** (11 test files)');
+  lines.push('- `npm test` — **143/143 green** (14 test files)');
   lines.push('- `npm run build` — **clean** (tsc strict + vite build, ~720ms)');
   lines.push('- Engine bundle size: 250KB JS (74KB gzipped)');
   lines.push('');

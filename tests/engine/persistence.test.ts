@@ -84,6 +84,51 @@ describe('persistence migrate()', () => {
     expect(ids[0]).toBe('rel-gym-friend');
   });
 
+  it('backfills baseId on legacy saves so removeRelationship-by-base still works', async () => {
+    const adapter = createMemoryStorageAdapter();
+    setStorageAdapter(adapter);
+    const state = makeState({
+      relationships: [
+        // Pre-baseId saves: id has the unique-suffix shape, no baseId field.
+        {
+          id: 'rel-date-partner-y2050-n3',
+          type: 'partner',
+          firstName: 'Jordan',
+          lastName: 'Reyes',
+          age: 28,
+          alive: true,
+          relationshipLevel: 60,
+        },
+        // Old fixed-id (parent) — baseId should fall through to the same id.
+        {
+          id: 'rel-mother',
+          type: 'mother',
+          firstName: 'Mary',
+          lastName: 'X',
+          age: 55,
+          alive: true,
+          relationshipLevel: 80,
+        },
+        // Post-dedupe shape: id has -migrated-N suffix, no baseId.
+        {
+          id: 'rel-gym-friend-migrated-1',
+          type: 'friend',
+          firstName: 'Sam',
+          lastName: 'Park',
+          age: 26,
+          alive: true,
+          relationshipLevel: 55,
+        },
+      ],
+    });
+    await adapter.set(SAVE_KEY, JSON.stringify(state));
+
+    const loaded = await loadGame();
+    expect(loaded).not.toBeNull();
+    const baseIds = loaded!.relationships.map((r) => r.baseId);
+    expect(baseIds).toEqual(['rel-date-partner', 'rel-mother', 'rel-gym-friend']);
+  });
+
   it('round-trips a clean save without rewriting unique ids', async () => {
     const state = makeState({
       relationships: [

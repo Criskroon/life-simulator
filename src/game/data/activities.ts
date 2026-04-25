@@ -52,8 +52,6 @@ export const ALL_ACTIVITIES: Activity[] = [
             payload: {
               id: 'rel-gym-friend',
               type: 'friend',
-              firstName: 'Sam',
-              lastName: 'Park',
               age: 26,
               alive: true,
               relationshipLevel: 55,
@@ -108,8 +106,6 @@ export const ALL_ACTIVITIES: Activity[] = [
             payload: {
               id: 'rel-library-friend',
               type: 'friend',
-              firstName: 'Robin',
-              lastName: 'Hayes',
               age: 31,
               alive: true,
               relationshipLevel: 50,
@@ -176,8 +172,6 @@ export const ALL_ACTIVITIES: Activity[] = [
             payload: {
               id: 'rel-vacation-romance',
               type: 'partner',
-              firstName: 'Casey',
-              lastName: 'Moreno',
               age: 30,
               alive: true,
               relationshipLevel: 60,
@@ -229,8 +223,6 @@ export const ALL_ACTIVITIES: Activity[] = [
             payload: {
               id: 'rel-activity-partner',
               type: 'partner',
-              firstName: 'Alex',
-              lastName: 'Rivera',
               age: 27,
               alive: true,
               relationshipLevel: 60,
@@ -257,8 +249,6 @@ export const ALL_ACTIVITIES: Activity[] = [
             payload: {
               id: 'rel-activity-partner',
               type: 'partner',
-              firstName: 'Morgan',
-              lastName: 'Bell',
               age: 28,
               alive: true,
               relationshipLevel: 80,

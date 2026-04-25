@@ -78,6 +78,13 @@ function migrate(state: PlayerState): PlayerState {
   // each row is independently addressable.
   next = { ...next, relationships: dedupeRelationshipIds(next.relationships) };
 
+  // 2026-04: removeRelationship now matches on baseId so events can target
+  // every record of the same base. Saves written before this change have
+  // unique ids like `rel-date-partner-y2050-n3` but no baseId, so the new
+  // remove-by-base logic would no-op on them. Derive baseId by stripping
+  // the unique-id suffix the addRelationship handler appends.
+  next = { ...next, relationships: backfillBaseIds(next.relationships) };
+
   return next;
 }
 
@@ -90,6 +97,19 @@ function dedupeRelationshipIds(
     seen.set(rel.id, count + 1);
     if (count === 0) return rel;
     return { ...rel, id: `${rel.id}-migrated-${count}` };
+  });
+}
+
+const UNIQUE_ID_SUFFIX = /(?:-migrated-\d+)?(?:-y\d+-n\d+)?$/;
+
+function backfillBaseIds(
+  relationships: PlayerState['relationships'],
+): PlayerState['relationships'] {
+  return relationships.map((rel) => {
+    if (rel.baseId) return rel;
+    const stripped = rel.id.replace(UNIQUE_ID_SUFFIX, '');
+    const baseId = stripped || rel.id;
+    return { ...rel, baseId };
   });
 }
 

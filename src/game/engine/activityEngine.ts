@@ -6,6 +6,7 @@ import { useActions } from './actionBudget';
 import { evaluateAllConditions } from './conditionEvaluator';
 import { getCurrentCountry } from './countryEngine';
 import { applyEffectsWithFeedback } from './effectsApplier';
+import { enrichGeneratedRelationships } from './nameGenerator';
 import { resolveChoice } from './outcomeResolver';
 import type { Rng } from './rng';
 import { renderTemplate } from './templates';
@@ -105,16 +106,17 @@ export function executeActivity(
     ? renderTemplate(picked.narrative, afterBudget)
     : null;
 
+  const enrichedEffects = enrichGeneratedRelationships(picked.effects, afterBudget, rng);
   const { state: afterEffects, deltas, specials } = applyEffectsWithFeedback(
     afterBudget,
-    picked.effects,
+    enrichedEffects,
   );
 
   return {
     ok: true,
     state: afterEffects,
     resolved: {
-      appliedEffects: picked.effects,
+      appliedEffects: enrichedEffects,
       narrative: renderedNarrative,
       deltas,
       specials,

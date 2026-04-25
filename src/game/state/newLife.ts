@@ -34,6 +34,7 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
   const parents: Relationship[] = [
     {
       id: 'rel-father',
+      baseId: 'rel-father',
       type: 'father',
       firstName: fatherFirst,
       lastName,
@@ -43,6 +44,7 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
     },
     {
       id: 'rel-mother',
+      baseId: 'rel-mother',
       type: 'mother',
       firstName: motherFirst,
       lastName: motherMaiden,
@@ -57,6 +59,7 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
   if (rng.next() < 0.5) {
     parents.push({
       id: 'rel-sibling',
+      baseId: 'rel-sibling',
       type: 'sibling',
       firstName: randomFirstName(namePool, pickGender(rng), () => rng.next()),
       lastName,

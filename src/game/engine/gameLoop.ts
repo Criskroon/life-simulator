@@ -3,6 +3,7 @@ import type { PlayerState } from '../types/gameState';
 import { calculateActionBudget } from './actionBudget';
 import { applyEffectsWithFeedback } from './effectsApplier';
 import { selectYearEvents } from './eventSelector';
+import { enrichGeneratedRelationships } from './nameGenerator';
 import { resolveChoice } from './outcomeResolver';
 import type { Rng } from './rng';
 import { renderTemplate } from './templates';
@@ -70,7 +71,8 @@ export function resolveEvent(
 
   const picked = resolveChoice(choice, rng);
   const renderedNarrative = picked.narrative ? renderTemplate(picked.narrative, state) : null;
-  const { state: afterEffects, deltas, specials } = applyEffectsWithFeedback(state, picked.effects);
+  const enrichedEffects = enrichGeneratedRelationships(picked.effects, state, rng);
+  const { state: afterEffects, deltas, specials } = applyEffectsWithFeedback(state, enrichedEffects);
 
   const triggered = afterEffects.triggeredEventIds.includes(event.id)
     ? afterEffects.triggeredEventIds
@@ -95,7 +97,7 @@ export function resolveEvent(
   return {
     state: next,
     resolved: {
-      appliedEffects: picked.effects,
+      appliedEffects: enrichedEffects,
       narrative: renderedNarrative,
       deltas,
       specials,
