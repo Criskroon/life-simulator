@@ -4,7 +4,7 @@ export const EDUCATION_EVENTS: GameEvent[] = [
   {
     id: 'edu_high_school_start',
     category: 'education',
-    weight: 1.5,
+    weight: 4.0,
     minAge: 13,
     maxAge: 13,
     oncePerLife: true,
@@ -107,10 +107,13 @@ export const EDUCATION_EVENTS: GameEvent[] = [
   {
     id: 'edu_dropout',
     category: 'education',
-    weight: 0.3,
+    weight: 2.5,
     minAge: 16,
     maxAge: 18,
-    conditions: [{ path: 'stats.happiness', op: '<', value: 30 }],
+    conditions: [
+      { path: 'education', op: 'has', value: 'high_school' },
+      { path: 'stats.smarts', op: '<', value: 55 },
+    ],
     title: 'Drop Out?',
     description: 'You\'re miserable at school. You could just leave.',
     choices: [
@@ -133,7 +136,7 @@ export const EDUCATION_EVENTS: GameEvent[] = [
   {
     id: 'edu_graduate_high_school',
     category: 'education',
-    weight: 2.0,
+    weight: 20.0,
     minAge: 18,
     maxAge: 18,
     oncePerLife: true,
@@ -153,7 +156,7 @@ export const EDUCATION_EVENTS: GameEvent[] = [
   {
     id: 'edu_university_apply',
     category: 'education',
-    weight: 1.5,
+    weight: 3.0,
     minAge: 18,
     maxAge: 19,
     oncePerLife: true,
@@ -216,7 +219,7 @@ export const EDUCATION_EVENTS: GameEvent[] = [
   {
     id: 'edu_uni_graduate',
     category: 'education',
-    weight: 2.0,
+    weight: 20.0,
     minAge: 22,
     maxAge: 22,
     oncePerLife: true,
@@ -273,7 +276,7 @@ export const EDUCATION_EVENTS: GameEvent[] = [
   {
     id: 'edu_grad_school_complete',
     category: 'education',
-    weight: 1.5,
+    weight: 12.0,
     minAge: 26,
     maxAge: 26,
     oncePerLife: true,

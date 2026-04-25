@@ -50,11 +50,17 @@ export function evaluateCondition(state: PlayerState, condition: Condition): boo
 function matchesValue(entry: unknown, target: unknown): boolean {
   if (entry === target) return true;
   if (entry && typeof entry === 'object') {
-    // Membership for object arrays: match by `id`, `type`, or `careerId` if
-    // any of those equal the target. Keeps event authoring concise:
+    // Membership for object arrays: match by `id`, `type`, `careerId`, or
+    // `level` if any of those equal the target. Keeps event authoring concise:
     //   { path: "relationships", op: "has", value: "spouse" }
+    //   { path: "education",     op: "has", value: "high_school" }
     const obj = entry as Record<string, unknown>;
-    return obj.id === target || obj.type === target || obj.careerId === target;
+    return (
+      obj.id === target ||
+      obj.type === target ||
+      obj.careerId === target ||
+      obj.level === target
+    );
   }
   return false;
 }

@@ -88,7 +88,7 @@ export function endYear(state: PlayerState, rng: Rng): PlayerState {
 
   const mortalityChance = mortalityCurve(state.age, state.stats.health);
   if (rng.next() < mortalityChance) {
-    const cause = state.age >= 70 ? 'old age' : 'an unexpected illness';
+    const cause = state.age >= 65 ? 'old age' : 'an unexpected illness';
     return killPlayer(state, cause);
   }
 
@@ -117,7 +117,7 @@ function killPlayer(state: PlayerState, cause: string): PlayerState {
   };
 }
 
-/** Yearly drift: salary income, slight stat decay, job tenure increment. */
+/** Yearly drift: salary income, lifetime health curve, job tenure increment. */
 function applyPassiveEffects(state: PlayerState): PlayerState {
   let next = state;
 
@@ -132,16 +132,25 @@ function applyPassiveEffects(state: PlayerState): PlayerState {
     };
   }
 
-  // Health drifts down slowly with age past 30.
-  if (state.age >= 30) {
-    const drop = state.age >= 60 ? 2 : 1;
-    next = {
-      ...next,
-      stats: {
-        ...next.stats,
-        health: Math.max(0, next.stats.health - drop),
-      },
-    };
+  // Lifetime health curve. Young bodies recover quickly from event hits,
+  // adults keep healing gently into their forties, then a slow decline
+  // begins at 50 and steepens through old age. Tuned so the average life
+  // ends from the mortality curve, not from random event hits adding up.
+  const currentHealth = next.stats.health;
+  let nextHealth = currentHealth;
+  if (state.age < 30) {
+    nextHealth = Math.min(100, currentHealth + 2);
+  } else if (state.age < 50) {
+    nextHealth = Math.min(100, currentHealth + 1);
+  } else if (state.age >= 80) {
+    nextHealth = Math.max(0, currentHealth - 2);
+  } else if (state.age >= 65) {
+    nextHealth = Math.max(0, currentHealth - 1);
+  } else {
+    nextHealth = Math.max(0, currentHealth - 1);
+  }
+  if (nextHealth !== currentHealth) {
+    next = { ...next, stats: { ...next.stats, health: nextHealth } };
   }
 
   // Friendships fade if not maintained — small decay each year.
@@ -167,16 +176,17 @@ function ageRelationships(state: PlayerState): PlayerState {
 }
 
 /**
- * Probability of dying at the end of a given year. Tuned to roughly match
- * intuitive lifespans: very low through middle age, ramping up after 60,
- * near-certain by 110. Poor health pulls the curve forward.
+ * Probability of dying at the end of a given year. Tuned for a median
+ * lifespan around 70-75: very low through middle age, climbing steeply
+ * after 65, near-certain by 105. Poor health pulls the curve forward.
  */
 function mortalityCurve(age: number, health: number): number {
   const healthFactor = 1 + (100 - health) / 50; // 1.0 at full health, ~3.0 at zero
-  if (age < 40) return 0.0005 * healthFactor;
-  if (age < 60) return 0.002 * healthFactor;
-  if (age < 75) return 0.01 * healthFactor;
-  if (age < 90) return 0.05 * healthFactor;
-  if (age < 105) return 0.2 * healthFactor;
+  if (age < 40) return 0.0006 * healthFactor;
+  if (age < 60) return 0.0025 * healthFactor;
+  if (age < 70) return 0.014 * healthFactor;
+  if (age < 80) return 0.035 * healthFactor;
+  if (age < 90) return 0.08 * healthFactor;
+  if (age < 100) return 0.25 * healthFactor;
   return 0.6 * healthFactor;
 }
