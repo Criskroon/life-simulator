@@ -101,6 +101,16 @@ function appendDowngradeNarrative(original: string | null): string {
     : DOWNGRADE_NARRATIVE_SUFFIX;
 }
 
+// True when the resolution has anything worth showing: a narrative, at least
+// one stat delta, or at least one special-effect chip. A handful of choices
+// (e.g. random_lottery_win → "Save your money") have no narrative and an
+// empty effects array — the modal would render a blank card with only a
+// Continue button. We skip the modal entirely in that case to match BitLife
+// behavior: the player picks, the resolution is silent, the game advances.
+function hasResolutionContent(r: ResolvedChoice): boolean {
+  return Boolean(r.narrative) || r.deltas.length > 0 || r.specials.length > 0;
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   player: null,
   pendingEvents: [],
@@ -205,16 +215,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     const remaining = pendingEvents.slice(1);
+    const showModal = hasResolutionContent(finalResolution);
+    const yearShouldEnd = remaining.length === 0;
     set({
       player: finalState,
       pendingEvents: remaining,
       rngState: newRngState,
-      lastResolution: finalResolution,
+      lastResolution: showModal ? finalResolution : null,
       resolutionTick: resolutionTick + 1,
-      yearAwaitingEnd: remaining.length === 0,
+      // If the modal is skipped we'll trigger endCurrentYear inline below,
+      // so don't leave yearAwaitingEnd dangling for clearLastResolution.
+      yearAwaitingEnd: showModal && yearShouldEnd,
       pendingDowngrade: false,
     });
     void saveGame(finalState);
+    if (!showModal && yearShouldEnd) {
+      get().endCurrentYear();
+    }
   },
 
   confirmInsufficientChoice: () => {
@@ -291,10 +308,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const result = executeActivity(player, activityId, rng);
     if (!result.ok) return;
 
+    const showModal = hasResolutionContent(result.resolved);
     set({
       player: result.state,
       rngState: rng.getState(),
-      lastResolution: result.resolved,
+      lastResolution: showModal ? result.resolved : null,
       resolutionTick: resolutionTick + 1,
     });
     void saveGame(result.state);

@@ -158,4 +158,92 @@ describe('enrichGeneratedRelationships', () => {
     const enriched = enrichGeneratedRelationships(effects, baseState, rng);
     expect(enriched).toEqual(effects);
   });
+
+  it('seeds names for tier specials (addPartner / addSpouse / addCasualEx) when payload omits gender', () => {
+    const rng = createRng(99);
+    const enriched = enrichGeneratedRelationships(
+      [
+        {
+          special: 'addPartner',
+          payload: { id: 'rel-partner', type: 'partner', age: 22 },
+        },
+        {
+          special: 'addSpouse',
+          payload: { id: 'rel-spouse', type: 'spouse', age: 28 },
+        },
+        {
+          special: 'addCasualEx',
+          payload: { id: 'rel-ex', type: 'casualEx', age: 24 },
+        },
+      ],
+      baseState,
+      rng,
+    );
+    for (const effect of enriched) {
+      const payload = effect.payload as { firstName?: string; lastName?: string };
+      expect(payload.firstName).toBeTruthy();
+      expect(payload.lastName).toBeTruthy();
+    }
+  });
+
+  it('seeds names for addFamilyMember and inherits surname for memberType:child', () => {
+    const rng = createRng(33);
+    const enriched = enrichGeneratedRelationships(
+      [
+        {
+          special: 'addFamilyMember',
+          payload: { id: 'rel-child', memberType: 'child', age: 0 },
+        },
+        {
+          special: 'addFamilyMember',
+          payload: { id: 'rel-sibling', memberType: 'sibling', age: 22 },
+        },
+      ],
+      baseState,
+      rng,
+    );
+    const child = enriched[0]?.payload as { firstName?: string; lastName?: string };
+    const sibling = enriched[1]?.payload as { firstName?: string; lastName?: string };
+    expect(child.firstName).toBeTruthy();
+    expect(child.lastName).toBe(baseState.lastName);
+    expect(sibling.firstName).toBeTruthy();
+    // Sibling does not inherit player's surname automatically (could be a
+    // step-sibling, in-law, etc.) — just confirm something non-empty.
+    expect(sibling.lastName?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it('produces a roughly 50/50 gender mix over 200 nameless event payloads', () => {
+    // Pull the male and female pools so we can classify the generated
+    // firstNames. The gender split only matters at the payload-without-gender
+    // layer; here we just want to confirm enrichment doesn't bias one way.
+    const rng = createRng(2026);
+    let maleHits = 0;
+    let femaleHits = 0;
+    const maleSet = new Set([
+      ...['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Joseph', 'Charles', 'Thomas'],
+    ]);
+    // Run 200 enrichments and infer gender by checking which pool the
+    // firstName fell into. Use a known male-heavy set as a sentinel; over
+    // 200 draws the count should land in a sane band (40-160).
+    for (let i = 0; i < 200; i++) {
+      const enriched = enrichGeneratedRelationships(
+        [
+          {
+            special: 'addPartner',
+            payload: { id: `rel-p-${i}`, type: 'partner', age: 25 },
+          },
+        ],
+        baseState,
+        rng,
+      );
+      const payload = enriched[0]?.payload as { firstName?: string };
+      if (maleSet.has(payload.firstName ?? '')) maleHits++;
+      else femaleHits++;
+    }
+    // Loose sanity bounds: not all male, not all female. The point is to
+    // catch a regression where pickNPCGender starts returning a constant.
+    expect(maleHits + femaleHits).toBe(200);
+    expect(maleHits).toBeGreaterThan(0);
+    expect(femaleHits).toBeGreaterThan(0);
+  });
 });

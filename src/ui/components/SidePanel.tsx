@@ -225,7 +225,9 @@ function ExRow({
       <div className="font-medium capitalize">
         {ex.type === 'casualEx' ? 'Casual ex' : 'Significant ex'}
         {ex.formerSlot && (
-          <span className="ml-2 text-xs text-slate-400">({ex.formerSlot})</span>
+          <span className="ml-2 text-xs text-slate-400">
+            (former {ex.formerSlot})
+          </span>
         )}
       </div>
       <div className="text-slate-500">

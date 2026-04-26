@@ -54,10 +54,30 @@ function needsName(rel: Partial<Relationship>): boolean {
 }
 
 /**
+ * Specials whose payload represents a person and should get a generated
+ * name when one wasn't supplied. Kept in a Set so adding a new
+ * person-creating special is one line in two places (here + the handler
+ * registry in effectsApplier).
+ */
+const PERSON_CREATING_SPECIALS = new Set([
+  'addRelationship',
+  'addPartner',
+  'addFiance',
+  'addSpouse',
+  'addCasualEx',
+  'addSignificantEx',
+  'addFriend',
+  'addFamilyMember',
+]);
+
+/**
  * Walk an effects array and fill in firstName/lastName for any
- * `addRelationship` payload that didn't supply one. The payload's
+ * person-creating payload that didn't supply one. The payload's
  * `gender` (if present) overrides the random pick — useful for content
- * that wants e.g. a wife specifically.
+ * that wants e.g. a wife specifically. Most event payloads omit gender,
+ * so we pick one off the rng to guarantee a name; otherwise the row in
+ * the relationships panel renders as "Casual ex (former partner) — age 32"
+ * with no name at all.
  *
  * Returns a new array; never mutates the input. Pure besides the rng calls.
  */
@@ -68,18 +88,25 @@ export function enrichGeneratedRelationships(
 ): Effect[] {
   const country = getCurrentCountry(state);
   return effects.map((effect) => {
-    if (effect.special !== 'addRelationship' || !effect.payload) return effect;
-    const rel = effect.payload as Partial<Relationship> & { gender?: Gender };
+    if (!effect.special || !PERSON_CREATING_SPECIALS.has(effect.special)) return effect;
+    if (!effect.payload) return effect;
+    const rel = effect.payload as Partial<Relationship> & {
+      gender?: Gender;
+      memberType?: string;
+    };
     if (!needsName(rel)) return effect;
     const gender = rel.gender ?? pickNPCGender(rng);
     const { firstName, lastName } = generateNPCName(country, gender, rng);
+    // Children (legacy `addRelationship` with type:'child' and the new
+    // `addFamilyMember` with memberType/type:'child') inherit the player's
+    // surname unless the payload set one explicitly.
+    const isChild = rel.type === 'child' || rel.memberType === 'child';
     return {
       ...effect,
       payload: {
         ...effect.payload,
         firstName,
-        // Children inherit the player's surname unless the payload set one.
-        lastName: rel.lastName || (rel.type === 'child' ? state.lastName : lastName),
+        lastName: rel.lastName || (isChild ? state.lastName : lastName),
       },
     };
   });
