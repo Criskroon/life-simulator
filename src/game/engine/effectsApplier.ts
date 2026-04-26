@@ -20,6 +20,7 @@ import {
   addPartner,
   addSignificantEx,
   addSpouse,
+  adjustPersonRelationshipLevel,
   breakUpPartner,
   divorceSpouse,
   endEngagement,
@@ -102,6 +103,16 @@ const SPECIAL_HANDLERS: Record<string, SpecialHandler> = {
 
   addFiance: (state, payload) => {
     const guarded = ensureRelationshipState(state);
+    // Slot-promotion shortcut: when the payload sets `promoteSlot: 'partner'`,
+    // promote the current partner directly. This bypasses the
+    // baseId/empty-name dance that the legacy proposal events relied on —
+    // direct-action interactions enrich payloads with random names before
+    // this handler runs (see enrichGeneratedRelationships), which would
+    // otherwise defeat the addFiance engine's "promote-whoever-is-in-slot"
+    // detection.
+    if (payload.promoteSlot === 'partner' && guarded.relationshipState.partner) {
+      return addFiance(guarded, guarded.relationshipState.partner, guarded.currentYear);
+    }
     const person = payloadToPerson(guarded, payload);
     return addFiance(guarded, person, guarded.currentYear);
   },
@@ -162,6 +173,14 @@ const SPECIAL_HANDLERS: Record<string, SpecialHandler> = {
   resetFriendContact: (state, payload) => {
     const id = (payload.id as string | undefined) ?? (payload.baseId as string | undefined);
     return resetFriendContact(state, id);
+  },
+
+  adjustRelationshipLevel: (state, payload) => {
+    const targetId =
+      (payload.targetId as string | undefined) ?? (payload.id as string | undefined);
+    const delta = typeof payload.delta === 'number' ? payload.delta : 0;
+    if (!targetId || delta === 0) return state;
+    return adjustPersonRelationshipLevel(state, targetId, delta);
   },
 
   // -------------------------------------------------------------------
@@ -384,6 +403,14 @@ function summarizeSpecial(effect: Effect, state: PlayerState): SpecialSummary | 
       return { special: 'addPartner', label: name ? `Started dating ${name}` : 'New partner' };
     }
     case 'addFiance': {
+      // promoteSlot bypasses the payload identity — read the actual incumbent
+      // off relationshipState so the modal shows "Engaged to Sara" not the
+      // enrichment-generated random name in the payload.
+      if (payload.promoteSlot === 'partner' && state.relationshipState?.partner) {
+        const p = state.relationshipState.partner;
+        const name = `${p.firstName} ${p.lastName}`.trim();
+        return { special: 'addFiance', label: name ? `Engaged to ${name}` : 'Got engaged' };
+      }
       const p = payload as Partial<Person>;
       const name = [p.firstName, p.lastName].filter(Boolean).join(' ').trim();
       return { special: 'addFiance', label: name ? `Engaged to ${name}` : 'Got engaged' };
@@ -408,6 +435,33 @@ function summarizeSpecial(effect: Effect, state: PlayerState): SpecialSummary | 
       return { special: 'loseFriend', label: 'Drifted apart from a friend' };
     case 'resetFriendContact':
       return null;
+    case 'adjustRelationshipLevel': {
+      const targetId =
+        (payload.targetId as string | undefined) ??
+        (payload.id as string | undefined);
+      const delta = typeof payload.delta === 'number' ? payload.delta : 0;
+      if (!targetId || delta === 0) return null;
+      // Look up the person across slots/lists to give a friendly label.
+      const rs = state.relationshipState;
+      const matches = (p: Person) => p.id === targetId || p.baseId === targetId;
+      const candidates: Person[] = [];
+      if (rs) {
+        if (rs.partner) candidates.push(rs.partner);
+        if (rs.fiance) candidates.push(rs.fiance);
+        if (rs.spouse) candidates.push(rs.spouse);
+        candidates.push(...rs.family, ...rs.friends, ...rs.significantExes, ...rs.casualExes);
+      }
+      const found = candidates.find(matches);
+      const name = found
+        ? `${found.firstName} ${found.lastName}`.trim() || 'them'
+        : 'them';
+      const sign = delta > 0 ? '+' : '−';
+      const verb = delta > 0 ? 'Closer to' : 'Further from';
+      return {
+        special: 'adjustRelationshipLevel',
+        label: `${verb} ${name}: ${sign}${Math.abs(delta)}`,
+      };
+    }
     case 'removeRelationship': {
       const id = payload.id as string | undefined;
       const rel = id ? state.relationships.find((r) => r.id === id || r.baseId === id) : null;

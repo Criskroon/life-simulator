@@ -3,6 +3,7 @@ import { ActivitiesMenu } from '../components/ActivitiesMenu';
 import { AgeButton } from '../components/AgeButton';
 import { EventModal } from '../components/EventModal';
 import { InsufficientFundsModal } from '../components/InsufficientFundsModal';
+import { RelationshipProfileModal } from '../components/RelationshipProfileModal';
 import { ResolutionModal } from '../components/ResolutionModal';
 import { SidePanel } from '../components/SidePanel';
 import { StatBar } from '../components/StatBar';
@@ -15,6 +16,7 @@ export function GameScreen() {
   const pendingInsufficientChoice = useGameStore((s) => s.pendingInsufficientChoice);
   const pendingInsufficientActivity = useGameStore((s) => s.pendingInsufficientActivity);
   const activitiesMenuOpen = useGameStore((s) => s.activitiesMenuOpen);
+  const profileTarget = useGameStore((s) => s.profileTarget);
   const ageUpYear = useGameStore((s) => s.ageUpYear);
   const resolveCurrentEvent = useGameStore((s) => s.resolveCurrentEvent);
   const clearLastResolution = useGameStore((s) => s.clearLastResolution);
@@ -23,6 +25,9 @@ export function GameScreen() {
   const openActivitiesMenu = useGameStore((s) => s.openActivitiesMenu);
   const closeActivitiesMenu = useGameStore((s) => s.closeActivitiesMenu);
   const executeActivityAction = useGameStore((s) => s.executeActivityAction);
+  const openProfile = useGameStore((s) => s.openProfile);
+  const closeProfile = useGameStore((s) => s.closeProfile);
+  const executeRelationshipAction = useGameStore((s) => s.executeRelationshipAction);
 
   if (!player) return null;
 
@@ -33,15 +38,22 @@ export function GameScreen() {
   // 1. ResolutionModal — show outcome of last choice before anything else
   // 2. InsufficientFundsModal — confirm/cancel before re-showing event
   // 3. EventModal — show next event to resolve
-  // 4. ActivitiesMenu — player-initiated, lowest priority so any incoming
+  // 4. RelationshipProfileModal — player-initiated, slot above activities
+  // 5. ActivitiesMenu — player-initiated, lowest priority so any incoming
   //    event from age-up takes precedence
   const showResolution = lastResolution !== null;
   const showInsufficient = !showResolution && insufficientPending;
   const showEvent = !showResolution && !showInsufficient && Boolean(currentEvent);
+  const showProfile =
+    !showResolution &&
+    !showInsufficient &&
+    !showEvent &&
+    profileTarget !== null;
   const showActivities =
     !showResolution &&
     !showInsufficient &&
     !showEvent &&
+    !showProfile &&
     activitiesMenuOpen;
 
   // Disable both buttons while ANY modal is up so the user can't ageup
@@ -51,7 +63,8 @@ export function GameScreen() {
     !player.alive ||
     lastResolution !== null ||
     insufficientPending ||
-    activitiesMenuOpen;
+    activitiesMenuOpen ||
+    profileTarget !== null;
 
   return (
     <div className="min-h-screen flex justify-center p-4 pb-32">
@@ -65,7 +78,7 @@ export function GameScreen() {
           <StatBar label="Looks" value={player.stats.looks} color="#ec4899" />
         </div>
 
-        <SidePanel player={player} />
+        <SidePanel player={player} onSelect={openProfile} />
 
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-100 via-slate-100 z-30">
           <div className="max-w-phone mx-auto flex gap-2">
@@ -104,6 +117,16 @@ export function GameScreen() {
         <InsufficientFundsModal
           onConfirm={confirmInsufficientChoice}
           onCancel={cancelInsufficientChoice}
+        />
+      )}
+
+      {showProfile && profileTarget && (
+        <RelationshipProfileModal
+          player={player}
+          target={profileTarget.person}
+          targetType={profileTarget.type}
+          onAction={executeRelationshipAction}
+          onClose={closeProfile}
         />
       )}
 

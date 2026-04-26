@@ -466,6 +466,41 @@ export function removePersonByBase(
   return withRelationshipState(guarded, next);
 }
 
+/**
+ * Bump or drop a single person's `relationshipLevel`. Walks every slot and
+ * list, finds the matching person by id (or baseId as fallback), and
+ * returns a new state with the level clamped to 0..100.
+ *
+ * Used by the `adjustRelationshipLevel` special so direct-action interactions
+ * (spend_time, argue, give_gift) can shift bond/closeness on the targeted
+ * person specifically — the existing `relationshipLevel` field was set on
+ * add and never updated until this landed.
+ */
+export function adjustPersonRelationshipLevel(
+  state: PlayerState,
+  targetId: string,
+  delta: number,
+): PlayerState {
+  const guarded = ensureRelationshipState(state);
+  const rs = guarded.relationshipState;
+  const matches = (p: Person) => p.id === targetId || p.baseId === targetId;
+  const adjust = <T extends Person>(p: T): T => ({
+    ...p,
+    relationshipLevel: Math.max(0, Math.min(100, p.relationshipLevel + delta)),
+  });
+
+  const next: RelationshipState = {
+    partner: rs.partner && matches(rs.partner) ? adjust(rs.partner) : rs.partner,
+    fiance: rs.fiance && matches(rs.fiance) ? adjust(rs.fiance) : rs.fiance,
+    spouse: rs.spouse && matches(rs.spouse) ? adjust(rs.spouse) : rs.spouse,
+    family: rs.family.map((f) => (matches(f) ? adjust(f) : f)),
+    friends: rs.friends.map((f) => (matches(f) ? adjust(f) : f)),
+    significantExes: rs.significantExes.map((e) => (matches(e) ? adjust(e) : e)),
+    casualExes: rs.casualExes.map((e) => (matches(e) ? adjust(e) : e)),
+  };
+  return withRelationshipState(guarded, next);
+}
+
 /* -----------------------------------------------------------------------
  * Decay
  * --------------------------------------------------------------------- */

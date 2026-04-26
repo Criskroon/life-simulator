@@ -34,6 +34,7 @@ const SPECIAL_ICONS: Record<SpecialEffect, string> = {
   divorceSpouse: '💔',
   loseFriend: '👋',
   resetFriendContact: '📞',
+  adjustRelationshipLevel: '💗',
   addAsset: '🛍️',
   addCrime: '🚓',
   addEducation: '🏫',

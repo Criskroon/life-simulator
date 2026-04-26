@@ -31,6 +31,7 @@ export type SpecialEffect =
   | 'divorceSpouse'
   | 'loseFriend'
   | 'resetFriendContact'
+  | 'adjustRelationshipLevel'
   // Legacy specials — kept as shims that route through the slot logic.
   | 'addRelationship'
   | 'removeRelationship'

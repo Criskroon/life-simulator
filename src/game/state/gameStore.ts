@@ -1,13 +1,15 @@
 import { create } from 'zustand';
+import { ACTIONS_BY_TYPE } from '../data/actions';
 import { ALL_ACTIVITIES } from '../data/activities';
 import { ALL_EVENTS } from '../data/events';
 import { executeActivity, getAvailableActivities } from '../engine/activityEngine';
 import { canAffordChoice } from '../engine/choicePreview';
 import { applyEffectsWithFeedback } from '../engine/effectsApplier';
 import { ageUp, endYear, resolveEvent } from '../engine/gameLoop';
+import { executeAction } from '../engine/interactions';
 import { createRng, hashSeed, type Rng } from '../engine/rng';
 import type { Effect, GameEvent, ResolvedChoice } from '../types/events';
-import type { PlayerState } from '../types/gameState';
+import type { Person, PlayerState, RelationshipType } from '../types/gameState';
 import { createNewLife, type NewLifeOptions } from './newLife';
 import { deleteSave, loadGame, saveGame } from './persistence';
 
@@ -49,6 +51,13 @@ interface GameStore {
   yearAwaitingEnd: boolean;
   /** True when the Activities menu modal is open. */
   activitiesMenuOpen: boolean;
+  /**
+   * Set when the player has tapped a relationship row in SidePanel. Carries
+   * both the Person and the slot type (`partner` vs `casualEx` etc) so the
+   * interactions engine can look up the right action set without re-deriving
+   * the type from the relationship state.
+   */
+  profileTarget: { person: Person; type: RelationshipType } | null;
 
   // actions
   startNewLife: (options?: NewLifeOptions) => void;
@@ -59,6 +68,9 @@ interface GameStore {
   openActivitiesMenu: () => void;
   closeActivitiesMenu: () => void;
   executeActivityAction: (activityId: string) => void;
+  openProfile: (person: Person, type: RelationshipType) => void;
+  closeProfile: () => void;
+  executeRelationshipAction: (actionId: string) => void;
   endCurrentYear: () => void;
   goToMenu: () => void;
   loadSavedGame: () => Promise<boolean>;
@@ -123,6 +135,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pendingDowngrade: false,
   yearAwaitingEnd: false,
   activitiesMenuOpen: false,
+  profileTarget: null,
 
   startNewLife: (options) => {
     const seed = freshRngSeed();
@@ -140,6 +153,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pendingDowngrade: false,
       yearAwaitingEnd: false,
       activitiesMenuOpen: false,
+      profileTarget: null,
     });
     void saveGame(player);
   },
@@ -318,6 +332,45 @@ export const useGameStore = create<GameStore>((set, get) => ({
     void saveGame(result.state);
   },
 
+  openProfile: (person, type) => {
+    if (!get().player?.alive) return;
+    if (get().pendingEvents.length > 0) return;
+    if (get().lastResolution) return;
+    if (get().activitiesMenuOpen) return;
+    set({ profileTarget: { person, type } });
+  },
+
+  closeProfile: () => {
+    set({ profileTarget: null });
+  },
+
+  executeRelationshipAction: (actionId) => {
+    const { player, profileTarget, rngState, resolutionTick } = get();
+    if (!player || !profileTarget) return;
+    const { person, type } = profileTarget;
+    const list = ACTIONS_BY_TYPE[type] ?? [];
+    const action = list.find((a) => a.id === actionId);
+    if (!action) return;
+
+    const rng = createRng(rngState);
+    const result = executeAction(player, action, person, type, rng);
+    if (!result.ok) return;
+
+    const showModal = hasResolutionContent(result.resolved);
+    // Close the profile so the resolution modal takes over without being
+    // stacked behind a stale profile (the targeted person may have been
+    // promoted/demoted by the action — partner→fiance after a successful
+    // propose, partner→casualEx after a rejection).
+    set({
+      player: result.state,
+      rngState: rng.getState(),
+      lastResolution: showModal ? result.resolved : null,
+      resolutionTick: resolutionTick + 1,
+      profileTarget: null,
+    });
+    void saveGame(result.state);
+  },
+
   endCurrentYear: () => {
     const { player, rngState } = get();
     if (!player) return;
@@ -344,6 +397,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pendingDowngrade: false,
       yearAwaitingEnd: false,
       activitiesMenuOpen: false,
+      profileTarget: null,
     });
   },
 
@@ -362,6 +416,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pendingDowngrade: false,
       yearAwaitingEnd: false,
       activitiesMenuOpen: false,
+      profileTarget: null,
     });
     return true;
   },
@@ -383,6 +438,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pendingDowngrade: false,
       yearAwaitingEnd: false,
       activitiesMenuOpen: false,
+      profileTarget: null,
     });
   },
 

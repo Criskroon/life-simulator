@@ -7,17 +7,22 @@ import type {
   PlayerState,
   Person,
   RelationshipState,
+  RelationshipType,
   SignificantEx,
 } from '../../game/types/gameState';
 import { LifeHistory } from './LifeHistory';
 
 type Tab = 'history' | 'job' | 'relationships' | 'assets' | 'crime';
 
+type SelectHandler = (person: Person, type: RelationshipType) => void;
+
 interface SidePanelProps {
   player: PlayerState;
+  /** Optional — when present, relationship rows become clickable. */
+  onSelect?: SelectHandler;
 }
 
-export function SidePanel({ player }: SidePanelProps) {
+export function SidePanel({ player, onSelect }: SidePanelProps) {
   const [tab, setTab] = useState<Tab>('history');
 
   return (
@@ -42,7 +47,9 @@ export function SidePanel({ player }: SidePanelProps) {
       <div className="p-4 max-h-72 overflow-y-auto">
         {tab === 'history' && <LifeHistory history={player.history} />}
         {tab === 'job' && <JobPanel player={player} />}
-        {tab === 'relationships' && <RelationshipsPanel player={player} />}
+        {tab === 'relationships' && (
+          <RelationshipsPanel player={player} onSelect={onSelect} />
+        )}
         {tab === 'assets' && <AssetsPanel player={player} />}
         {tab === 'crime' && <CrimePanel player={player} />}
       </div>
@@ -64,7 +71,13 @@ function JobPanel({ player }: { player: PlayerState }) {
   );
 }
 
-function RelationshipsPanel({ player }: { player: PlayerState }) {
+function RelationshipsPanel({
+  player,
+  onSelect,
+}: {
+  player: PlayerState;
+  onSelect?: SelectHandler;
+}) {
   const rs: RelationshipState =
     player.relationshipState ?? migrateLegacyRelationships(player.relationships);
 
@@ -83,16 +96,37 @@ function RelationshipsPanel({ player }: { player: PlayerState }) {
     <div className="space-y-4 text-sm text-slate-700">
       {(rs.partner || rs.fiance || rs.spouse) && (
         <Section title="Active">
-          {rs.spouse && <SlotRow label="Spouse" person={rs.spouse} />}
-          {rs.fiance && <SlotRow label="Fiancé(e)" person={rs.fiance} />}
-          {rs.partner && <SlotRow label="Partner" person={rs.partner} />}
+          {rs.spouse && (
+            <SlotRow
+              label="Spouse"
+              person={rs.spouse}
+              type="spouse"
+              onSelect={onSelect}
+            />
+          )}
+          {rs.fiance && (
+            <SlotRow
+              label="Fiancé(e)"
+              person={rs.fiance}
+              type="fiance"
+              onSelect={onSelect}
+            />
+          )}
+          {rs.partner && (
+            <SlotRow
+              label="Partner"
+              person={rs.partner}
+              type="partner"
+              onSelect={onSelect}
+            />
+          )}
         </Section>
       )}
 
       {rs.family.length > 0 && (
         <Section title="Family">
           {rs.family.map((m) => (
-            <FamilyRow key={m.id} member={m} />
+            <FamilyRow key={m.id} member={m} onSelect={onSelect} />
           ))}
         </Section>
       )}
@@ -100,7 +134,7 @@ function RelationshipsPanel({ player }: { player: PlayerState }) {
       {rs.friends.length > 0 && (
         <Section title="Friends">
           {rs.friends.map((f) => (
-            <FriendRow key={f.id} friend={f} />
+            <FriendRow key={f.id} friend={f} onSelect={onSelect} />
           ))}
         </Section>
       )}
@@ -108,7 +142,7 @@ function RelationshipsPanel({ player }: { player: PlayerState }) {
       {rs.significantExes.length > 0 && (
         <Collapsible title={`Significant Exes (${rs.significantExes.length})`}>
           {rs.significantExes.map((e) => (
-            <ExRow key={e.id} ex={e} kind="significant" />
+            <ExRow key={e.id} ex={e} kind="significant" onSelect={onSelect} />
           ))}
         </Collapsible>
       )}
@@ -121,6 +155,7 @@ function RelationshipsPanel({ player }: { player: PlayerState }) {
               ex={e}
               kind="casual"
               currentYear={player.currentYear}
+              onSelect={onSelect}
             />
           ))}
         </Collapsible>
@@ -157,9 +192,49 @@ function Collapsible({ title, children }: { title: string; children: React.React
   );
 }
 
-function SlotRow({ label, person }: { label: string; person: Person }) {
+/**
+ * Wraps a row in a clickable button when an `onSelect` callback is provided,
+ * otherwise renders a plain list item — keeps the SidePanel usable in
+ * surfaces without interaction support (e.g. the death screen recap).
+ */
+function ClickableRow({
+  onClick,
+  children,
+}: {
+  onClick?: () => void;
+  children: React.ReactNode;
+}) {
+  if (!onClick) {
+    return (
+      <li className="border-b border-slate-100 pb-1 last:border-0">{children}</li>
+    );
+  }
   return (
     <li className="border-b border-slate-100 pb-1 last:border-0">
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full text-left rounded-lg px-1 py-0.5 -mx-1 hover:bg-slate-50 transition cursor-pointer"
+      >
+        {children}
+      </button>
+    </li>
+  );
+}
+
+function SlotRow({
+  label,
+  person,
+  type,
+  onSelect,
+}: {
+  label: string;
+  person: Person;
+  type: RelationshipType;
+  onSelect?: SelectHandler;
+}) {
+  return (
+    <ClickableRow onClick={onSelect ? () => onSelect(person, type) : undefined}>
       <div className="font-medium">{label}</div>
       <div className="text-slate-500">
         {person.firstName} {person.lastName} — age {person.age}
@@ -168,13 +243,19 @@ function SlotRow({ label, person }: { label: string; person: Person }) {
       <div className="text-xs text-slate-400">
         Bond: {person.relationshipLevel}/100
       </div>
-    </li>
+    </ClickableRow>
   );
 }
 
-function FamilyRow({ member }: { member: FamilyMember }) {
+function FamilyRow({
+  member,
+  onSelect,
+}: {
+  member: FamilyMember;
+  onSelect?: SelectHandler;
+}) {
   return (
-    <li className="border-b border-slate-100 pb-1 last:border-0">
+    <ClickableRow onClick={onSelect ? () => onSelect(member, member.type) : undefined}>
       <div className="font-medium capitalize">{member.type}</div>
       <div className="text-slate-500">
         {member.firstName} {member.lastName} — age {member.age}
@@ -183,13 +264,19 @@ function FamilyRow({ member }: { member: FamilyMember }) {
       <div className="text-xs text-slate-400">
         Closeness: {member.relationshipLevel}/100
       </div>
-    </li>
+    </ClickableRow>
   );
 }
 
-function FriendRow({ friend }: { friend: Friend }) {
+function FriendRow({
+  friend,
+  onSelect,
+}: {
+  friend: Friend;
+  onSelect?: SelectHandler;
+}) {
   return (
-    <li className="border-b border-slate-100 pb-1 last:border-0">
+    <ClickableRow onClick={onSelect ? () => onSelect(friend, 'friend') : undefined}>
       <div className="font-medium">
         Friend{friend.isBestFriend && <span className="ml-2 text-amber-500">★ best</span>}
       </div>
@@ -201,7 +288,7 @@ function FriendRow({ friend }: { friend: Friend }) {
         {friend.yearsSinceContact > 1 &&
           ` · last spoke ${friend.yearsSinceContact}y ago`}
       </div>
-    </li>
+    </ClickableRow>
   );
 }
 
@@ -209,10 +296,12 @@ function ExRow({
   ex,
   kind,
   currentYear,
+  onSelect,
 }: {
   ex: CasualEx | SignificantEx;
   kind: 'casual' | 'significant';
   currentYear?: number;
+  onSelect?: SelectHandler;
 }) {
   const meta =
     kind === 'casual' && currentYear !== undefined
@@ -220,8 +309,9 @@ function ExRow({
       : kind === 'significant'
         ? `since ${(ex as SignificantEx).endYear || '—'}`
         : '';
+  const exType: RelationshipType = kind === 'casual' ? 'casualEx' : 'significantEx';
   return (
-    <li className="border-b border-slate-100 pb-1 last:border-0">
+    <ClickableRow onClick={onSelect ? () => onSelect(ex, exType) : undefined}>
       <div className="font-medium capitalize">
         {ex.type === 'casualEx' ? 'Casual ex' : 'Significant ex'}
         {ex.formerSlot && (
@@ -234,7 +324,7 @@ function ExRow({
         {ex.firstName} {ex.lastName} — age {ex.age}
       </div>
       {meta && <div className="text-xs text-slate-400">{meta}</div>}
-    </li>
+    </ClickableRow>
   );
 }
 
