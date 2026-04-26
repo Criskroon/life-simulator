@@ -22,7 +22,7 @@ careers, and systems on top without restructuring.
 
 ```bash
 npm run dev          # → http://localhost:5180  (5173 is reserved by another project on this machine)
-npm test             # 242 tests across the engine — must stay green
+npm test             # 247 tests across the engine — must stay green
 npm run build        # tsc -b && vite build
 ```
 
@@ -143,11 +143,26 @@ the name pool needs to be different (e.g. German), add a new pool to
   `null` as a type but the evaluator handles it correctly via `!==`).
 - **Test fixtures need both `minAge` and `maxAge` if you want age-200 to be
   out of range.** A `minAge` alone leaves the upper bound open.
+- **`removeRelationship` summaries are suppressed when nothing matches.**
+  `rel_breakup` and `rel_propose` fan out 5 partner-base sweeps; only the
+  ones that hit a real row produce a "Lost touch with X" toast. Don't
+  reintroduce a fallback "Lost touch with someone" — that is the bug we
+  fixed, not a UX choice.
+- **Friend-decay is intentionally silent.** `decayRelationships` filters
+  faded friends out of `relationshipState.friends` without emitting any
+  `loseFriend` special. A player notices the change next time they open
+  the relationships tab. Don't add fade modals — adding them recreates the
+  "five toasts in a row" UX problem.
+- **Name pools are deduped at the resolver, not in the source files.**
+  `getCountryPool` strips duplicates so the author-curated decade buckets
+  in `nl.ts`/`us.ts`/`gb.ts` can keep their cultural mix without
+  multiplying any one name's draw odds. Don't add dedupe logic at draw
+  time — it's already done once at module load.
 
 ## Testing
 
 ```bash
-npm test             # one-shot, all 242 tests
+npm test             # one-shot, all 247 tests
 npm run test:watch
 ```
 

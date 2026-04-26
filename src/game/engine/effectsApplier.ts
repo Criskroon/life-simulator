@@ -464,9 +464,19 @@ function summarizeSpecial(effect: Effect, state: PlayerState): SpecialSummary | 
     }
     case 'removeRelationship': {
       const id = payload.id as string | undefined;
+      // Suppress the summary when no person actually matches. rel_breakup
+      // and rel_propose fan out 5 partner-base sweeps; for a clean state
+      // 4 of those are no-ops and would otherwise emit "Lost touch with
+      // someone" for each miss. Surface a summary only when a real
+      // relationship row will be removed.
       const rel = id ? state.relationships.find((r) => r.id === id || r.baseId === id) : null;
-      const name = rel ? `${rel.firstName} ${rel.lastName}`.trim() : 'someone';
-      return { special: 'removeRelationship', label: `Lost touch with ${name}` };
+      if (!rel) return null;
+      const fullName = `${rel.firstName ?? ''} ${rel.lastName ?? ''}`.trim();
+      // Defensive fallback: a record exists but somehow has no firstName.
+      // Diagnostic shows this is 0 for fresh lives; protects against legacy
+      // saves and any future code path that bypasses name enrichment.
+      const display = fullName || 'an old acquaintance';
+      return { special: 'removeRelationship', label: `Lost touch with ${display}` };
     }
     case 'addAsset': {
       const asset = payload as Partial<Asset>;

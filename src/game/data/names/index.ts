@@ -14,12 +14,27 @@ import { US_NAMES } from './us';
 
 export type { NameSet } from './types';
 
+/**
+ * Strip duplicate entries from each list (preserve first occurrence). The
+ * raw pool files are author-curated and decade-bucketed, so the same name
+ * occasionally lands in two buckets — `Lev` showed up 3× in NL male,
+ * tripling its draw odds. Dedupe keeps the cultural mix intact while
+ * giving every distinct name an equal slot in the uniform draw.
+ */
+function dedupePool(set: NameSet): NameSet {
+  return {
+    male: [...new Set(set.male)],
+    female: [...new Set(set.female)],
+    surnames: [...new Set(set.surnames)],
+  };
+}
+
 const POOLS: Record<CountryCode, NameSet> = {
-  NL: NL_NAMES,
-  US: US_NAMES,
-  GB: GB_NAMES,
+  NL: dedupePool(NL_NAMES),
+  US: dedupePool(US_NAMES),
+  GB: dedupePool(GB_NAMES),
 };
 
 export function getCountryPool(code: CountryCode): NameSet {
-  return POOLS[code] ?? GB_NAMES;
+  return POOLS[code] ?? POOLS.GB;
 }

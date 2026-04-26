@@ -331,4 +331,90 @@ describe('applyEffectsWithFeedback', () => {
     ]);
     expect(baseState.stats.happiness).toBe(70);
   });
+
+  it('suppresses removeRelationship summaries when nothing matches the id (breakup-sweep no-op)', () => {
+    // rel_breakup fans out 5 partner-base sweeps; on a clean state none
+    // should produce a "Lost touch with someone" toast.
+    const result = applyEffectsWithFeedback(baseState, [
+      { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
+      { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
+      { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
+      { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
+      { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
+    ]);
+    expect(result.specials).toEqual([]);
+  });
+
+  it('emits one removeRelationship summary per actually-removed person, named, in sweep order', () => {
+    const stateWithThree = {
+      ...baseState,
+      relationships: [
+        {
+          id: 'rel-activity-partner-y2026-n0',
+          baseId: 'rel-activity-partner',
+          type: 'partner' as const,
+          firstName: 'Lieke',
+          lastName: 'Bakker',
+          age: 28,
+          alive: true,
+          relationshipLevel: 60,
+        },
+        {
+          id: 'rel-vacation-romance-y2024-n1',
+          baseId: 'rel-vacation-romance',
+          type: 'casualEx' as const,
+          firstName: 'Sara',
+          lastName: 'de Vries',
+          age: 30,
+          alive: true,
+          relationshipLevel: 40,
+        },
+        {
+          id: 'rel-coworker-partner-y2025-n2',
+          baseId: 'rel-coworker-partner',
+          type: 'casualEx' as const,
+          firstName: 'Maarten',
+          lastName: 'Visser',
+          age: 32,
+          alive: true,
+          relationshipLevel: 35,
+        },
+      ],
+    };
+    const result = applyEffectsWithFeedback(stateWithThree, [
+      { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
+      { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
+      { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
+      { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
+      { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
+    ]);
+    expect(result.specials.map((s) => s.label)).toEqual([
+      'Lost touch with Maarten Visser',
+      'Lost touch with Sara de Vries',
+      'Lost touch with Lieke Bakker',
+    ]);
+  });
+
+  it('falls back to "an old acquaintance" when a removeRelationship hit has no firstName', () => {
+    const stateWithNamelessRel = {
+      ...baseState,
+      relationships: [
+        {
+          id: 'rel-mystery-y2024-n0',
+          baseId: 'rel-mystery',
+          type: 'friend' as const,
+          firstName: '',
+          lastName: '',
+          age: 30,
+          alive: true,
+          relationshipLevel: 40,
+        },
+      ],
+    };
+    const result = applyEffectsWithFeedback(stateWithNamelessRel, [
+      { special: 'removeRelationship', payload: { id: 'rel-mystery' } },
+    ]);
+    expect(result.specials).toHaveLength(1);
+    expect(result.specials[0]?.label).toBe('Lost touch with an old acquaintance');
+  });
 });

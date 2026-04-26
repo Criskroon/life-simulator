@@ -79,6 +79,40 @@ describe('generateNPCName', () => {
   });
 });
 
+describe('getCountryPool — dedupe', () => {
+  // The author-curated NL/US/GB lists bucket names by decade for cultural
+  // mix; the same name occasionally falls into two buckets, which would
+  // double or triple its draw odds under a uniform pick. The pool resolver
+  // dedupes on read so the live pool is collision-free.
+  it('returns a list with no duplicate first or last names per country', () => {
+    for (const code of ['NL', 'US', 'GB'] as const) {
+      const pool = getCountryPool(code);
+      expect(new Set(pool.male).size).toBe(pool.male.length);
+      expect(new Set(pool.female).size).toBe(pool.female.length);
+      expect(new Set(pool.surnames).size).toBe(pool.surnames.length);
+    }
+  });
+
+  it('keeps the top-1 first-name frequency under 2% across 1000 draws (healthy diversity)', () => {
+    for (const code of ['NL', 'US', 'GB'] as const) {
+      const country = getCountry(code);
+      const rng = createRng(99 + code.charCodeAt(0));
+      const counts = new Map<string, number>();
+      const total = 1000;
+      for (let i = 0; i < total; i++) {
+        const gender = i % 2 === 0 ? 'male' : 'female';
+        const { firstName } = generateNPCName(country, gender, rng);
+        counts.set(firstName, (counts.get(firstName) ?? 0) + 1);
+      }
+      const top = Math.max(...counts.values());
+      // Pre-dedupe the NL pool had `Lev` 3× in the male list; that
+      // would push top-1 well over 2%. After dedupe even the most
+      // common name should sit comfortably under that threshold.
+      expect(top / total).toBeLessThan(0.02);
+    }
+  });
+});
+
 describe('enrichGeneratedRelationships', () => {
   it('fills firstName + lastName when payload has neither', () => {
     const rng = createRng(123);
