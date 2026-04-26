@@ -125,6 +125,7 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
     ],
     triggeredEventIds: [],
     actionsRemainingThisYear: 0,
+    actionUsageThisYear: [],
   };
   // Compute the budget after the rest of the state is built so the modifiers
   // (job=null, low health, etc.) see the final values.

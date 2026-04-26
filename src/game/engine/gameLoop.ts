@@ -1,6 +1,7 @@
 import type { GameEvent, ResolvedChoice } from '../types/events';
 import type { PlayerState } from '../types/gameState';
 import { calculateActionBudget } from './actionBudget';
+import { resetActionUsage } from './actionCooldowns';
 import { applyEffectsWithFeedback } from './effectsApplier';
 import { selectYearEvents } from './eventSelector';
 import { enrichGeneratedRelationships } from './nameGenerator';
@@ -44,6 +45,9 @@ export function ageUp(
   // Refresh the activities budget for the new year. Anything left over from
   // last year evaporates; the player has to spend or lose them.
   next = { ...next, actionsRemainingThisYear: calculateActionBudget(next) };
+  // Wipe last year's interaction-cooldown ledger so light-tier actions
+  // become available again on the new year.
+  next = resetActionUsage(next);
 
   const pendingEvents = selectYearEvents(next, events, rng);
   return { state: next, pendingEvents };

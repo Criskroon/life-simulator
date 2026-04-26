@@ -68,7 +68,8 @@ export type ActionDisabledReason =
   | 'insufficient_actions'
   | 'insufficient_money'
   | 'condition_failed'
-  | 'deceased';
+  | 'deceased'
+  | 'on_cooldown';
 
 /**
  * What the UI receives per action: the action itself plus an enabled flag

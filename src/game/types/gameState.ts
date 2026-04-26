@@ -244,6 +244,15 @@ export interface PlayerState {
    */
   actionsRemainingThisYear: number;
 
+  /**
+   * Cooldown ledger for relationship interactions: each entry is
+   * `${personId}|${actionId}` recorded the year that pair fired. Reset to
+   * `[]` by ageUp() so the natural cycle is "once per (person × action ×
+   * year)". Optional so legacy saves and pre-X3 fixtures pass through; the
+   * cooldown engine treats `undefined` as an empty list.
+   */
+  actionUsageThisYear?: string[];
+
   /** Cause of death, set when alive becomes false. */
   causeOfDeath?: string;
 }

@@ -17,6 +17,7 @@ import type {
   RelationshipAction,
 } from '../types/interactions';
 import { useActions } from './actionBudget';
+import { isActionOnCooldown, recordActionUsage } from './actionCooldowns';
 import { canAffordChoice } from './choicePreview';
 import { evaluateCondition } from './conditionEvaluator';
 import { applyEffectsWithFeedback } from './effectsApplier';
@@ -69,9 +70,9 @@ function asChoice(action: RelationshipAction): Choice {
 
 /**
  * First-failed-gate reason, in priority order: deceased > condition >
- * money > actions. Money checks before actions because a player without
- * money should see the cost as the blocker, not "spend an action point
- * you don't have."
+ * cooldown > money > actions. Cooldown sits above money so a player who
+ * already used a free interaction this year sees "Already this year"
+ * instead of being told to bring cash.
  */
 function disabledReasonFor(
   state: PlayerState,
@@ -82,6 +83,7 @@ function disabledReasonFor(
   if (!evaluateActionConditions(state, target, action.conditions)) {
     return 'condition_failed';
   }
+  if (isActionOnCooldown(state, target.id, action)) return 'on_cooldown';
   if (!canAffordChoice(state, asChoice(action))) return 'insufficient_money';
   const cost = actionPointCost(action);
   if (cost > 0 && state.actionsRemainingThisYear < cost) {
@@ -139,6 +141,7 @@ export type ExecuteActionFailure =
   | { kind: 'ineligible' }
   | { kind: 'condition_failed' }
   | { kind: 'deceased' }
+  | { kind: 'on_cooldown' }
   | { kind: 'insufficient_actions'; required: number; remaining: number };
 
 export interface ExecuteActionSuccess {
@@ -170,6 +173,9 @@ export function executeAction(
   if (!evaluateActionConditions(state, target, action.conditions)) {
     return { ok: false, kind: 'condition_failed' };
   }
+  if (isActionOnCooldown(state, target.id, action)) {
+    return { ok: false, kind: 'on_cooldown' };
+  }
 
   const cost = actionPointCost(action);
   let next: PlayerState = state;
@@ -185,6 +191,7 @@ export function executeAction(
     }
     next = after;
   }
+  next = recordActionUsage(next, target.id, action);
 
   const picked = resolveChoice(asChoice(action), rng);
   const targetedEffects = injectTargetId(picked.effects, target);
