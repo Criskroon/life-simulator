@@ -100,10 +100,9 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
     weight: 0.6,
     minAge: 22,
     maxAge: 50,
-    oncePerLife: true,
-    // E1 fix: gate the propose path on having no spouse already. The slot
-    // model in addSpouse force-divorces on collision, but conditioning here
-    // keeps the narrative honest — you don't "propose" while still married.
+    // No oncePerLife — `lacks spouse` already gates re-proposals so divorced
+    // or widowed players can re-marry. Without this, the second-marriage
+    // narrative shape was structurally impossible.
     conditions: [
       { path: 'relationships', op: 'has', value: 'partner' },
       { path: 'relationships', op: 'lacks', value: 'spouse' },
@@ -380,7 +379,8 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
     weight: 0.4,
     minAge: 22,
     maxAge: 50,
-    oncePerLife: true,
+    // No oncePerLife — see rel_propose. `lacks spouse` already gates this
+    // so re-marriage after divorce/widowhood is possible.
     conditions: [
       { path: 'relationships', op: 'has', value: 'partner' },
       { path: 'relationships', op: 'lacks', value: 'spouse' },

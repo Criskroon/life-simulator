@@ -26,6 +26,7 @@ import {
   ensureRelationshipState,
   loseFriend,
   removePersonByBase,
+  resetFriendContact,
   withRelationshipState,
 } from './relationshipEngine';
 
@@ -156,6 +157,11 @@ const SPECIAL_HANDLERS: Record<string, SpecialHandler> = {
     const id = (payload.id as string | undefined) ?? (payload.baseId as string | undefined);
     if (!id) return state;
     return loseFriend(state, id);
+  },
+
+  resetFriendContact: (state, payload) => {
+    const id = (payload.id as string | undefined) ?? (payload.baseId as string | undefined);
+    return resetFriendContact(state, id);
   },
 
   // -------------------------------------------------------------------
@@ -400,6 +406,8 @@ function summarizeSpecial(effect: Effect, state: PlayerState): SpecialSummary | 
       return { special: 'divorceSpouse', label: 'Divorced' };
     case 'loseFriend':
       return { special: 'loseFriend', label: 'Drifted apart from a friend' };
+    case 'resetFriendContact':
+      return null;
     case 'removeRelationship': {
       const id = payload.id as string | undefined;
       const rel = id ? state.relationships.find((r) => r.id === id || r.baseId === id) : null;

@@ -293,12 +293,16 @@ export const ALL_ACTIVITIES: Activity[] = [
     actionCost: 1,
     icon: '📞',
     conditions: [{ path: 'relationships', op: 'has', value: 'friend' }],
+    // Every outcome resets the friend-fade counter — even the fight, since
+    // the player still made contact. Without this, friends fade out within
+    // 8 years no matter how often the player calls.
     outcomes: [
       {
         weight: 70,
         narrative: 'Two hours fly by. You forget what you were even worried about earlier.',
         effects: [
           { path: 'stats.happiness', op: '+', value: 5 },
+          { special: 'resetFriendContact' },
         ],
       },
       {
@@ -307,6 +311,7 @@ export const ALL_ACTIVITIES: Activity[] = [
         effects: [
           { path: 'stats.happiness', op: '+', value: 3 },
           { path: 'stats.smarts', op: '+', value: 1 },
+          { special: 'resetFriendContact' },
         ],
       },
       {
@@ -314,6 +319,7 @@ export const ALL_ACTIVITIES: Activity[] = [
         narrative: 'It turns into the same fight you\'ve had three times this year. You hang up first.',
         effects: [
           { path: 'stats.happiness', op: '-', value: 6 },
+          { special: 'resetFriendContact' },
         ],
       },
     ],

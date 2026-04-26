@@ -28,6 +28,7 @@ import {
   executeActivity,
   getAvailableActivities,
 } from '../../src/game/engine/activityEngine';
+import { canAffordChoice } from '../../src/game/engine/choicePreview';
 import { createRng, type Rng } from '../../src/game/engine/rng';
 import { setStorageAdapter } from '../../src/game/state/persistence';
 import { createNewLife, type NewLifeOptions } from '../../src/game/state/newLife';
@@ -77,15 +78,46 @@ export interface SimulateOptions {
 
 const STAT_KEYS = ['health', 'happiness', 'smarts', 'looks'] as const;
 
-function defaultEventChooser(event: GameEvent, rng: Rng): number {
-  return rng.int(0, event.choices.length - 1);
+/**
+ * Pick an event choice index for the simulator AI. Mirrors the affordability
+ * gate the real game enforces in the store: choices the player can't afford
+ * are filtered out. If everything is unaffordable, fall back to the cheapest
+ * one — modelling the player who, after the InsufficientFundsModal, finally
+ * picks the alternative they should have picked first. (We don't separately
+ * apply the embarrassment penalty here; that's a UX construct, not a balance
+ * lever.)
+ */
+function defaultEventChooser(
+  event: GameEvent,
+  state: PlayerState,
+  rng: Rng,
+): number {
+  const indices = event.choices.map((_, i) => i);
+  const affordable = indices.filter((i) =>
+    canAffordChoice(state, event.choices[i]!),
+  );
+  if (affordable.length > 0) {
+    return affordable[rng.int(0, affordable.length - 1)]!;
+  }
+  // Nothing is affordable — pick the cheapest (least negative cost).
+  let best = 0;
+  let bestCost = Number.NEGATIVE_INFINITY;
+  for (const i of indices) {
+    const c = event.choices[i]!.cost ?? 0;
+    if (c > bestCost) {
+      bestCost = c;
+      best = i;
+    }
+  }
+  return best;
 }
 
 function activityCanBeAfforded(activity: Activity, state: PlayerState): boolean {
-  if (activity.cost == null) return true;
-  // `cost` is negative when the player pays. We compare against current money.
-  if (activity.cost >= 0) return true;
-  return state.money + activity.cost >= -1000; // small overdraft buffer for safety
+  // Use the shared affordability gate so activities and events stay in
+  // lockstep — including country cost-of-living adjustments. The real game
+  // store does the same intercept: an unaffordable activity triggers the
+  // InsufficientFundsModal and never executes.
+  return canAffordChoice(state, { label: activity.name, cost: activity.cost });
 }
 
 /**
@@ -185,7 +217,7 @@ export function simulateLifeWithActivities(
     const budgetThisYear = state.actionsRemainingThisYear;
 
     for (const event of ageResult.pendingEvents) {
-      const idx = defaultEventChooser(event, rng);
+      const idx = defaultEventChooser(event, state, rng);
       const safeIdx = Math.min(Math.max(0, idx), event.choices.length - 1);
       const result = resolveEvent(state, event, safeIdx, rng);
       state = result.state;

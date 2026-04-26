@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getChoicePreview } from '../../src/game/engine/choicePreview';
+import { canAffordChoice, getChoicePreview } from '../../src/game/engine/choicePreview';
 import type { Choice } from '../../src/game/types/events';
 import type { PlayerState } from '../../src/game/types/gameState';
 
@@ -120,5 +120,26 @@ describe('getChoicePreview', () => {
     expect(getChoicePreview(choice, briton).isAffordable).toBe(true);
     const american: PlayerState = { ...baseState, country: 'US', money: 1050 };
     expect(getChoicePreview(choice, american).isAffordable).toBe(false);
+  });
+});
+
+describe('canAffordChoice', () => {
+  it('matches getChoicePreview.isAffordable across cases', () => {
+    const cases: Array<{ choice: Choice; state: PlayerState }> = [
+      { choice: { label: 'no-cost', effects: [] }, state: baseState },
+      { choice: { label: 'free', effects: [], cost: 0 }, state: baseState },
+      { choice: { label: 'income', effects: [], cost: 500 }, state: { ...baseState, money: 0 } },
+      { choice: { label: 'cheap', effects: [], cost: -10 }, state: baseState },
+      { choice: { label: 'expensive', effects: [], cost: -10000 }, state: baseState },
+    ];
+    for (const { choice, state } of cases) {
+      expect(canAffordChoice(state, choice)).toBe(getChoicePreview(choice, state).isAffordable);
+    }
+  });
+
+  it('country adjustment: an event affordable in GB can be unaffordable in US', () => {
+    const choice: Choice = { label: 'Edge', effects: [], cost: -1000 };
+    expect(canAffordChoice({ ...baseState, country: 'GB', money: 1050 }, choice)).toBe(true);
+    expect(canAffordChoice({ ...baseState, country: 'US', money: 1050 }, choice)).toBe(false);
   });
 });

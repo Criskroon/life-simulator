@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { ALL_ACTIVITIES } from '../data/activities';
 import { ALL_EVENTS } from '../data/events';
 import { executeActivity, getAvailableActivities } from '../engine/activityEngine';
-import { getChoicePreview } from '../engine/choicePreview';
+import { canAffordChoice } from '../engine/choicePreview';
 import { applyEffectsWithFeedback } from '../engine/effectsApplier';
 import { ageUp, endYear, resolveEvent } from '../engine/gameLoop';
 import { createRng, hashSeed, type Rng } from '../engine/rng';
@@ -163,13 +163,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Affordability gate: detect "too expensive" before we apply effects so
     // the original event stays in the queue and the player gets a do-over
-    // (with an embarrassment penalty if they push through anyway).
-    if (typeof choice.cost === 'number' && choice.cost < 0) {
-      const required = -choice.cost;
-      if (player.money < required) {
-        set({ pendingInsufficientChoice: choiceIndex });
-        return;
-      }
+    // (with an embarrassment penalty if they push through anyway). Uses the
+    // shared helper so events and activities stay in lockstep — including
+    // country cost-of-living adjustments.
+    if (!canAffordChoice(player, choice)) {
+      set({ pendingInsufficientChoice: choiceIndex });
+      return;
     }
 
     const rng = createRng(rngState);
@@ -282,16 +281,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!activity) return;
     if (!getAvailableActivities(player).some((a) => a.id === activityId)) return;
 
-    // Money gate — same intercept as events. Reuses the InsufficientFundsModal.
-    if (typeof activity.cost === 'number' && activity.cost < 0) {
-      const preview = getChoicePreview(
-        { label: activity.name, cost: activity.cost },
-        player,
-      );
-      if (!preview.isAffordable) {
-        set({ pendingInsufficientActivity: activityId });
-        return;
-      }
+    // Money gate — same intercept as events.
+    if (!canAffordChoice(player, { label: activity.name, cost: activity.cost })) {
+      set({ pendingInsufficientActivity: activityId });
+      return;
     }
 
     const rng = createRng(rngState);

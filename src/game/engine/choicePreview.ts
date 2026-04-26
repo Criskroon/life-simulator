@@ -59,3 +59,13 @@ export function getChoicePreview(
     adjustedCost: adjusted,
   };
 }
+
+/**
+ * Single source of truth for "can the player afford this choice?". Uses the
+ * same country-adjusted figures as the actual money deduction, so a choice
+ * that looks affordable here is genuinely affordable. The store's intercept
+ * and the simulator's AI both call through this — keeps the gate consistent.
+ */
+export function canAffordChoice(state: PlayerState, choice: Choice): boolean {
+  return getChoicePreview(choice, state).isAffordable;
+}

@@ -22,7 +22,7 @@ careers, and systems on top without restructuring.
 
 ```bash
 npm run dev          # → http://localhost:5180  (5173 is reserved by another project on this machine)
-npm test             # 143 tests across the engine — must stay green
+npm test             # 175 tests across the engine — must stay green
 npm run build        # tsc -b && vite build
 ```
 
@@ -147,7 +147,7 @@ the name pool needs to be different (e.g. German), add a new pool to
 ## Testing
 
 ```bash
-npm test             # one-shot, all 143 tests
+npm test             # one-shot, all 175 tests
 npm run test:watch
 ```
 

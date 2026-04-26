@@ -342,6 +342,31 @@ export function loseFriend(state: PlayerState, baseOrId: string): PlayerState {
   });
 }
 
+/**
+ * Reset the friend-fade counter so the friend doesn't drop out of the
+ * fade window. Called by activities like `call_friend` and `family_time`.
+ * If `baseOrId` is provided, only that friend is reset; otherwise all
+ * friends are. (A generic "call a friend" activity doesn't target one
+ * specific friend in current content — the player is keeping in touch
+ * in general — so resetting all is the sensible default.)
+ */
+export function resetFriendContact(
+  state: PlayerState,
+  baseOrId?: string,
+): PlayerState {
+  const guarded = ensureRelationshipState(state);
+  const rs = guarded.relationshipState;
+  if (rs.friends.length === 0) return guarded;
+  const matches = (f: Friend) =>
+    !baseOrId || f.id === baseOrId || f.baseId === baseOrId;
+  return withRelationshipState(guarded, {
+    ...rs,
+    friends: rs.friends.map((f) =>
+      matches(f) ? { ...f, yearsSinceContact: 0 } : f,
+    ),
+  });
+}
+
 export function addCasualEx(
   state: PlayerState,
   person: Person,

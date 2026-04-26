@@ -170,6 +170,30 @@ describe('relationshipEngine — slot logic', () => {
     expect(state.relationshipState!.significantExes).toHaveLength(1);
     expect(state.relationshipState!.significantExes[0]?.formerSlot).toBe('spouse');
   });
+
+  it('re-marriage works after divorce: old spouse → ex, new partner → spouse', () => {
+    let state = makeState();
+    // First marriage
+    state = addSpouse(state, person('s1', 'Esmee'), 2030);
+    expect(state.relationshipState!.spouse?.firstName).toBe('Esmee');
+    // Divorce
+    state = divorceSpouse(state, 2040);
+    expect(state.relationshipState!.spouse).toBeNull();
+    // Find a new partner, then re-marry
+    state = addPartner(state, person('rel-new-partner', 'Lev'), 2042);
+    expect(state.relationshipState!.partner?.firstName).toBe('Lev');
+    state = addSpouse(state, person('rel-new-partner', 'Lev'), 2045);
+    // New marriage holds; partner slot cleared by promotion
+    expect(state.relationshipState!.spouse?.firstName).toBe('Lev');
+    expect(state.relationshipState!.partner).toBeNull();
+    // Ex from first marriage is still in the significantExes list
+    expect(state.relationshipState!.significantExes).toHaveLength(1);
+    expect(state.relationshipState!.significantExes[0]?.firstName).toBe('Esmee');
+    // Legacy view never reports more than one spouse
+    const spouses = state.relationships.filter((r) => r.type === 'spouse');
+    expect(spouses).toHaveLength(1);
+    expect(spouses[0]?.firstName).toBe('Lev');
+  });
 });
 
 describe('relationshipEngine — list ops', () => {
@@ -233,6 +257,39 @@ describe('relationshipEngine — auto-decay', () => {
       2026,
     );
     // 9 ticks past the friend-fade window (8) drops them.
+    for (let i = 0; i < 9; i++) state = decayRelationships(state);
+    expect(state.relationshipState!.friends).toHaveLength(0);
+  });
+
+  it('resetFriendContact keeps a friend alive across 6 years of yearly decay+call ticks', () => {
+    let state = makeState({ currentYear: 2026 });
+    state = addFriend(
+      state,
+      { ...person('rel-friend'), type: 'friend', yearsSinceContact: 0 },
+      2026,
+    );
+    // Simulate 6 years where the player calls the friend every year. Each
+    // tick: decay bumps yearsSinceContact +1, then the call activity resets
+    // it to 0. With the 8-year fade window, the friend must still be present.
+    for (let i = 0; i < 6; i++) {
+      state = decayRelationships(state);
+      state = applyEffect(state, { special: 'resetFriendContact' });
+      state = { ...state, currentYear: state.currentYear + 1 };
+    }
+    expect(state.relationshipState!.friends).toHaveLength(1);
+    expect(state.relationshipState!.friends[0]?.yearsSinceContact).toBeLessThan(8);
+    expect(state.relationshipState!.friends[0]?.yearsSinceContact).toBe(0);
+  });
+
+  it('without resetFriendContact, a friend fades out within the 8-year window', () => {
+    // Counter-test: confirms the audit's claim that diligent decay alone
+    // drops the friend, and that the reset is what saves them.
+    let state = makeState();
+    state = addFriend(
+      state,
+      { ...person('rel-friend'), type: 'friend', yearsSinceContact: 0 },
+      2026,
+    );
     for (let i = 0; i < 9; i++) state = decayRelationships(state);
     expect(state.relationshipState!.friends).toHaveLength(0);
   });

@@ -1,4 +1,5 @@
 import { ALL_EVENTS } from '../../src/game/data/events';
+import { canAffordChoice } from '../../src/game/engine/choicePreview';
 import { ageUp, endYear, resolveEvent } from '../../src/game/engine/gameLoop';
 import { createRng, type Rng } from '../../src/game/engine/rng';
 import { setStorageAdapter } from '../../src/game/state/persistence';
@@ -42,8 +43,30 @@ export interface SimulateOptions {
 
 const STAT_KEYS = ['health', 'happiness', 'smarts', 'looks'] as const;
 
-function defaultChooser(event: GameEvent, _state: PlayerState, rng: Rng): number {
-  return rng.int(0, event.choices.length - 1);
+/**
+ * Default choice strategy. Filters to affordable options first — the real
+ * game's store would intercept an unaffordable pick with the
+ * InsufficientFundsModal, so the simulator should mirror that. Fallback to
+ * the cheapest choice when nothing fits the budget.
+ */
+function defaultChooser(event: GameEvent, state: PlayerState, rng: Rng): number {
+  const indices = event.choices.map((_, i) => i);
+  const affordable = indices.filter((i) =>
+    canAffordChoice(state, event.choices[i]!),
+  );
+  if (affordable.length > 0) {
+    return affordable[rng.int(0, affordable.length - 1)]!;
+  }
+  let best = 0;
+  let bestCost = Number.NEGATIVE_INFINITY;
+  for (const i of indices) {
+    const c = event.choices[i]!.cost ?? 0;
+    if (c > bestCost) {
+      bestCost = c;
+      best = i;
+    }
+  }
+  return best;
 }
 
 /**
