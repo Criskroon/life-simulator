@@ -42,6 +42,7 @@ const DISABLED_LABELS: Record<ActionDisabledReason, string> = {
   insufficient_money: 'Not enough money',
   condition_failed: 'Not yet available',
   deceased: 'Deceased',
+  on_cooldown: 'Already this year',
 };
 
 const FORMER_SLOT_LABELS: Record<'partner' | 'fiance' | 'spouse', string> = {
