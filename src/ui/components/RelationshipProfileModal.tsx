@@ -1,7 +1,16 @@
 import { useEffect } from 'react';
 import { getChoicePreview } from '../../game/engine/choicePreview';
 import { getActionsFor } from '../../game/engine/interactions';
-import type { Person, PlayerState, RelationshipType } from '../../game/types/gameState';
+import type {
+  CasualEx,
+  Fiance,
+  Partner,
+  Person,
+  PlayerState,
+  RelationshipType,
+  SignificantEx,
+  Spouse,
+} from '../../game/types/gameState';
 import type {
   ActionDisabledReason,
   AvailableAction,
@@ -35,6 +44,52 @@ const DISABLED_LABELS: Record<ActionDisabledReason, string> = {
   deceased: 'Deceased',
 };
 
+const FORMER_SLOT_LABELS: Record<'partner' | 'fiance' | 'spouse', string> = {
+  partner: 'partner',
+  fiance: 'fiancé(e)',
+  spouse: 'spouse',
+};
+
+/**
+ * Per-type extra metadata shown next to age in the profile header. Pure
+ * derivation — exported so unit tests can pin the strings without standing
+ * up the React tree.
+ */
+export function getRelationshipMetaLabel(
+  target: Person,
+  targetType: RelationshipType,
+  currentYear: number,
+): string | null {
+  const yearsFromMet = Math.max(0, currentYear - (target.metYear ?? currentYear));
+  switch (targetType) {
+    case 'partner':
+    case 'fiance': {
+      const years = (target as Partner | Fiance).yearsTogether ?? yearsFromMet;
+      return `together ${years}y`;
+    }
+    case 'spouse': {
+      const years = (target as Spouse).yearsTogether ?? yearsFromMet;
+      return `married ${years}y`;
+    }
+    case 'friend': {
+      return `Friends since ${target.metYear ?? currentYear}`;
+    }
+    case 'casualEx': {
+      const ex = target as CasualEx;
+      return `Former ${FORMER_SLOT_LABELS[ex.formerSlot]} · Fades ${ex.decayYear}`;
+    }
+    case 'significantEx': {
+      const ex = target as SignificantEx;
+      return `Former ${FORMER_SLOT_LABELS[ex.formerSlot]}`;
+    }
+    case 'father':
+    case 'mother':
+    case 'sibling':
+    case 'child':
+      return null;
+  }
+}
+
 /**
  * Fullscreen profile for one Person. Mirrors the EventModal/ActivitiesMenu
  * layout so the three player-facing surfaces feel like the same family.
@@ -62,6 +117,7 @@ export function RelationshipProfileModal({
   const actions = getActionsFor(target, targetType, player);
   const fullName = `${target.firstName} ${target.lastName}`.trim() || 'Unknown';
   const typeLabel = TYPE_LABELS[targetType];
+  const metaLabel = getRelationshipMetaLabel(target, targetType, player.currentYear);
 
   return (
     <div
@@ -83,6 +139,7 @@ export function RelationshipProfileModal({
           </h3>
           <div className="text-sm text-slate-500 mt-1">
             Age {target.age}
+            {metaLabel && ` · ${metaLabel}`}
             {!target.alive && ' · Deceased'}
           </div>
           <div className="mt-3">

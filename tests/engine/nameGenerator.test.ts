@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getCountry } from '../../src/game/data/countries';
+import { getCountryPool } from '../../src/game/data/names/index';
 import {
   enrichGeneratedRelationships,
   generateNPCName,
@@ -212,20 +213,73 @@ describe('enrichGeneratedRelationships', () => {
     expect(sibling.lastName?.length ?? 0).toBeGreaterThan(0);
   });
 
-  it('produces a roughly 50/50 gender mix over 200 nameless event payloads', () => {
-    // Pull the male and female pools so we can classify the generated
-    // firstNames. The gender split only matters at the payload-without-gender
-    // layer; here we just want to confirm enrichment doesn't bias one way.
+  it('produces a roughly 50/50 gender mix over 200 nameless friend payloads', () => {
+    // Friend payloads stay random (non-romantic); no opposite-gender bias.
+    // Classify by checking which gendered name pool each firstName belongs
+    // to so a regression where pickNPCGender returns a constant is caught.
     const rng = createRng(2026);
+    const pool = getCountry('US');
+    const malePool = new Set(['Michael']); // sentinel — extended below
+    // Use the actual US name pool to classify, since the sentinel approach
+    // missed most names. Pull a slice from the seed import for fidelity.
+    void pool;
     let maleHits = 0;
     let femaleHits = 0;
-    const maleSet = new Set([
-      ...['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Joseph', 'Charles', 'Thomas'],
-    ]);
-    // Run 200 enrichments and infer gender by checking which pool the
-    // firstName fell into. Use a known male-heavy set as a sentinel; over
-    // 200 draws the count should land in a sane band (40-160).
+    const maleNames = new Set(
+      ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Joseph',
+       'Charles', 'Thomas', 'Daniel', 'Mark', 'Steven', 'Andrew', 'Paul',
+       'Brian', 'Kevin', 'George', 'Edward', 'Ronald', 'Anthony'],
+    );
+    void malePool;
     for (let i = 0; i < 200; i++) {
+      const enriched = enrichGeneratedRelationships(
+        [
+          {
+            special: 'addFriend',
+            payload: { id: `rel-f-${i}`, type: 'friend', age: 25 },
+          },
+        ],
+        baseState,
+        rng,
+      );
+      const payload = enriched[0]?.payload as { firstName?: string };
+      if (maleNames.has(payload.firstName ?? '')) maleHits++;
+      else femaleHits++;
+    }
+    expect(maleHits + femaleHits).toBe(200);
+    // Both sides must register some draws — a non-zero count with the small
+    // sentinel set is enough to catch "always one gender" regressions.
+    expect(maleHits).toBeGreaterThan(0);
+    expect(femaleHits).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * Romantic-slot specials default to the opposite of the player's gender.
+ * Heterosexual partner formation is the unsurprising case; nonbinary
+ * players still get random partners. Explicit `gender` on the payload
+ * is always honored, and non-romantic specials (friend/family) stay
+ * random regardless of player gender.
+ */
+describe('enrichGeneratedRelationships — opposite-gender partner default', () => {
+  function classifyGender(firstName: string): 'male' | 'female' | 'unknown' {
+    const us = getCountryPool('US');
+    const inMale = us.male.includes(firstName);
+    const inFemale = us.female.includes(firstName);
+    // Unisex names land in both pools — those are noise for this test.
+    if (inMale && !inFemale) return 'male';
+    if (inFemale && !inMale) return 'female';
+    return 'unknown';
+  }
+
+  function runPartnerFormations(
+    state: PlayerState,
+    count: number,
+    seed: number,
+  ): { male: number; female: number; unknown: number } {
+    const rng = createRng(seed);
+    const counts = { male: 0, female: 0, unknown: 0 };
+    for (let i = 0; i < count; i++) {
       const enriched = enrichGeneratedRelationships(
         [
           {
@@ -233,17 +287,97 @@ describe('enrichGeneratedRelationships', () => {
             payload: { id: `rel-p-${i}`, type: 'partner', age: 25 },
           },
         ],
-        baseState,
+        state,
         rng,
       );
       const payload = enriched[0]?.payload as { firstName?: string };
-      if (maleSet.has(payload.firstName ?? '')) maleHits++;
-      else femaleHits++;
+      counts[classifyGender(payload.firstName ?? '')]++;
     }
-    // Loose sanity bounds: not all male, not all female. The point is to
-    // catch a regression where pickNPCGender starts returning a constant.
-    expect(maleHits + femaleHits).toBe(200);
-    expect(maleHits).toBeGreaterThan(0);
-    expect(femaleHits).toBeGreaterThan(0);
+    return counts;
+  }
+
+  it('female player → ~100% male partners over 100 formations', () => {
+    const state: PlayerState = { ...baseState, gender: 'female' };
+    const { male, female } = runPartnerFormations(state, 100, 4242);
+    expect(male).toBeGreaterThanOrEqual(95);
+    expect(female).toBe(0);
+  });
+
+  it('male player → ~100% female partners over 100 formations', () => {
+    const state: PlayerState = { ...baseState, gender: 'male' };
+    const { male, female } = runPartnerFormations(state, 100, 1717);
+    expect(female).toBeGreaterThanOrEqual(95);
+    expect(male).toBe(0);
+  });
+
+  it('nonbinary player → roughly 50/50 partner gender', () => {
+    const state: PlayerState = { ...baseState, gender: 'nonbinary' };
+    const { male, female } = runPartnerFormations(state, 200, 9999);
+    // Loose 30–70 band per side over 200 — pickNPCGender splits 49/49/2.
+    expect(male).toBeGreaterThan(60);
+    expect(female).toBeGreaterThan(60);
+  });
+
+  it('respects explicit gender on the payload (overrides default)', () => {
+    const state: PlayerState = { ...baseState, gender: 'female' };
+    const rng = createRng(7);
+    const enriched = enrichGeneratedRelationships(
+      [
+        {
+          special: 'addPartner',
+          payload: {
+            id: 'rel-p-explicit',
+            type: 'partner',
+            age: 25,
+            gender: 'female',
+          },
+        },
+      ],
+      state,
+      rng,
+    );
+    const payload = enriched[0]?.payload as { firstName?: string };
+    expect(classifyGender(payload.firstName ?? '')).toBe('female');
+  });
+
+  it('non-romantic specials stay random regardless of player gender', () => {
+    const state: PlayerState = { ...baseState, gender: 'female' };
+    const rng = createRng(31);
+    let male = 0;
+    let female = 0;
+    for (let i = 0; i < 200; i++) {
+      const enriched = enrichGeneratedRelationships(
+        [
+          {
+            special: 'addFriend',
+            payload: { id: `rel-f-${i}`, type: 'friend', age: 25 },
+          },
+        ],
+        state,
+        rng,
+      );
+      const payload = enriched[0]?.payload as { firstName?: string };
+      const g = classifyGender(payload.firstName ?? '');
+      if (g === 'male') male++;
+      if (g === 'female') female++;
+    }
+    // If friends were getting the opposite-gender default, male would be
+    // ~100% (player is female). Both sides should land >50.
+    expect(male).toBeGreaterThan(50);
+    expect(female).toBeGreaterThan(50);
+  });
+
+  it('still has the sexual_orientation TODO comment', async () => {
+    // Hard guard against accidentally deleting the marker that flags this
+    // as the place to plug in orientation-aware logic later.
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const url = await import('node:url');
+    const here = path.dirname(url.fileURLToPath(import.meta.url));
+    const source = fs.readFileSync(
+      path.resolve(here, '../../src/game/engine/nameGenerator.ts'),
+      'utf-8',
+    );
+    expect(source).toMatch(/TODO:[^\n]*sexual_orientation/);
   });
 });

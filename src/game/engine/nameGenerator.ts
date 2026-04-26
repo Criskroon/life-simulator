@@ -16,7 +16,12 @@
 import type { Country } from '../types/country';
 import { getCountryPool } from '../data/names/index';
 import type { Effect } from '../types/events';
-import type { Gender, PlayerState, Relationship } from '../types/gameState';
+import type {
+  Gender,
+  PlayerState,
+  Relationship,
+  RelationshipType,
+} from '../types/gameState';
 import { getCurrentCountry } from './countryEngine';
 import type { Rng } from './rng';
 
@@ -47,6 +52,47 @@ function pickNPCGender(rng: Rng): Gender {
   if (roll < 0.49) return 'male';
   if (roll < 0.98) return 'female';
   return 'nonbinary';
+}
+
+/**
+ * Romantic-slot specials and relationship types. Anything that lands in
+ * partner / fiance / spouse / casualEx / significantEx is treated as
+ * romantic for gender-default purposes.
+ */
+const ROMANTIC_SPECIALS = new Set([
+  'addPartner',
+  'addFiance',
+  'addSpouse',
+  'addCasualEx',
+  'addSignificantEx',
+]);
+
+const ROMANTIC_TYPES = new Set<RelationshipType>([
+  'partner',
+  'fiance',
+  'spouse',
+  'casualEx',
+  'significantEx',
+]);
+
+/**
+ * Default-gender pick for a romantic NPC. Defaults to opposite of the
+ * player so a heterosexual partner-formation is the unsurprising case;
+ * a nonbinary player still gets a randomized partner. Explicit `gender`
+ * on the payload always wins (caller intent overrides default).
+ *
+ * Always consumes one rng draw — the same rng-cost as `pickNPCGender` —
+ * so swapping in this picker doesn't shift downstream stochastic tests
+ * that depend on a stable rng stream.
+ *
+ * TODO: When sexual_orientation player-stat is introduced, replace
+ * opposite-gender default with orientation-aware logic.
+ */
+function pickRomanticPartnerGender(state: PlayerState, rng: Rng): Gender {
+  const fallback = pickNPCGender(rng);
+  if (state.gender === 'male') return 'female';
+  if (state.gender === 'female') return 'male';
+  return fallback;
 }
 
 function needsName(rel: Partial<Relationship>): boolean {
@@ -95,7 +141,12 @@ export function enrichGeneratedRelationships(
       memberType?: string;
     };
     if (!needsName(rel)) return effect;
-    const gender = rel.gender ?? pickNPCGender(rng);
+    const isRomantic =
+      ROMANTIC_SPECIALS.has(effect.special) ||
+      (rel.type ? ROMANTIC_TYPES.has(rel.type as RelationshipType) : false);
+    const gender =
+      rel.gender ??
+      (isRomantic ? pickRomanticPartnerGender(state, rng) : pickNPCGender(rng));
     const { firstName, lastName } = generateNPCName(country, gender, rng);
     // Children (legacy `addRelationship` with type:'child' and the new
     // `addFamilyMember` with memberType/type:'child') inherit the player's

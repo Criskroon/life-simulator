@@ -273,8 +273,13 @@ export function addSpouse(state: PlayerState, p: Person, currentYear: number): P
 
   const source = promoteFiance ? rs.fiance : promotePartner ? rs.partner : null;
   const spouse: Spouse = source
-    ? { ...source, type: 'spouse', metYear: currentYear }
-    : { ...p, type: 'spouse', metYear: p.metYear ?? currentYear };
+    ? { ...source, type: 'spouse', metYear: currentYear, yearsTogether: 0 }
+    : {
+        ...p,
+        type: 'spouse',
+        metYear: p.metYear ?? currentYear,
+        yearsTogether: Math.max(0, currentYear - (p.metYear ?? currentYear)),
+      };
 
   return withRelationshipState(guarded, {
     ...rs,
@@ -533,7 +538,7 @@ export function decayRelationships(state: PlayerState): PlayerState {
 
   const partner = rs.partner ? refreshYearsTogether(ageOne(rs.partner)) : null;
   const fiance = rs.fiance ? refreshYearsTogether(ageOne(rs.fiance)) : null;
-  const spouse = rs.spouse ? ageOne(rs.spouse) : null;
+  const spouse = rs.spouse ? refreshYearsTogether(ageOne(rs.spouse)) : null;
   const family = rs.family.map(ageOne);
 
   const friends = rs.friends

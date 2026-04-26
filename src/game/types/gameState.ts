@@ -110,6 +110,13 @@ export interface Fiance extends Person {
 
 export interface Spouse extends Person {
   type: 'spouse';
+  /**
+   * Counts years married specifically — `metYear` is reset to the wedding
+   * year by `addSpouse`, so this measures time-as-spouse, not total time
+   * with the same person. Refreshed by `decayRelationships`. Mirror of the
+   * same field on Partner / Fiance.
+   */
+  yearsTogether?: number;
 }
 
 export interface CasualEx extends Person {
