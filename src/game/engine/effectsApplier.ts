@@ -119,6 +119,16 @@ const SPECIAL_HANDLERS: Record<string, SpecialHandler> = {
 
   addSpouse: (state, payload) => {
     const guarded = ensureRelationshipState(state);
+    // Slot-promotion shortcut: same convention as addFiance. `fiance.marry`
+    // sets `promoteSlot: 'fiance'` so the engine pulls the actual incumbent
+    // off relationshipState rather than fighting with the random name the
+    // enrichment step would otherwise stamp onto an empty payload.
+    if (payload.promoteSlot === 'fiance' && guarded.relationshipState.fiance) {
+      return addSpouse(guarded, guarded.relationshipState.fiance, guarded.currentYear);
+    }
+    if (payload.promoteSlot === 'partner' && guarded.relationshipState.partner) {
+      return addSpouse(guarded, guarded.relationshipState.partner, guarded.currentYear);
+    }
     const person = payloadToPerson(guarded, payload);
     return addSpouse(guarded, person, guarded.currentYear);
   },
@@ -416,6 +426,19 @@ function summarizeSpecial(effect: Effect, state: PlayerState): SpecialSummary | 
       return { special: 'addFiance', label: name ? `Engaged to ${name}` : 'Got engaged' };
     }
     case 'addSpouse': {
+      // promoteSlot bypasses the payload identity (mirrors addFiance) — read
+      // the actual incumbent off relationshipState so the modal shows the
+      // real fiance/partner's name instead of an enrichment-generated one.
+      if (payload.promoteSlot === 'fiance' && state.relationshipState?.fiance) {
+        const p = state.relationshipState.fiance;
+        const name = `${p.firstName} ${p.lastName}`.trim();
+        return { special: 'addSpouse', label: name ? `Married ${name}` : 'Got married' };
+      }
+      if (payload.promoteSlot === 'partner' && state.relationshipState?.partner) {
+        const p = state.relationshipState.partner;
+        const name = `${p.firstName} ${p.lastName}`.trim();
+        return { special: 'addSpouse', label: name ? `Married ${name}` : 'Got married' };
+      }
       const p = payload as Partial<Person>;
       const name = [p.firstName, p.lastName].filter(Boolean).join(' ').trim();
       return { special: 'addSpouse', label: name ? `Married ${name}` : 'Got married' };
