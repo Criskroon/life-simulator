@@ -146,7 +146,12 @@ export function addPartner(state: PlayerState, p: Person, currentYear: number): 
     return addCasualEx(guarded, p, currentYear, 'partner');
   }
 
-  const partner: Partner = { ...p, type: 'partner', metYear: p.metYear ?? currentYear };
+  const partner: Partner = {
+    ...p,
+    type: 'partner',
+    metYear: p.metYear ?? currentYear,
+    yearsTogether: 0,
+  };
   const displaced: CasualEx[] = rs.partner
     ? [...rs.casualExes, partnerToCasualEx(rs.partner, currentYear)]
     : rs.casualExes;
@@ -163,20 +168,35 @@ export function addPartner(state: PlayerState, p: Person, currentYear: number): 
  * present so the proposal narrative reads correctly. If a payload-person
  * differs from the current partner, the partner is demoted to casualEx
  * and the payload-person occupies the slot.
+ *
+ * `metYear` is reset to `currentYear` on promotion so `yearsTogether` on
+ * the fiance counts engaged-time, not total-time-with-person. The proposal
+ * is the start of a new clock — events keying off `fiance.yearsTogether`
+ * (planning the wedding, cold feet) measure from "the day they said yes."
  */
 export function addFiance(state: PlayerState, p: Person, currentYear: number): PlayerState {
   const guarded = ensureRelationshipState(state);
   const rs = guarded.relationshipState;
 
-  const samePerson = rs.partner && p.baseId && rs.partner.baseId === p.baseId;
-  const promoted: Fiance = samePerson
-    ? { ...rs.partner!, type: 'fiance', metYear: rs.partner!.metYear ?? currentYear }
-    : { ...p, type: 'fiance', metYear: p.metYear ?? currentYear };
+  // Promote the current partner when:
+  //   - the payload baseId matches (legacy explicit-id flow), OR
+  //   - the payload has no identity (firstName/lastName empty) — this is
+  //     the event-author flow where the proposal payload is just a marker
+  //     ("promote whoever is in the slot") because the author can't know
+  //     which baseId the player's current partner has.
+  const promoteIncumbent = Boolean(
+    rs.partner &&
+      ((p.baseId && rs.partner.baseId === p.baseId) ||
+        (!p.firstName && !p.lastName)),
+  );
+  const promoted: Fiance = promoteIncumbent
+    ? { ...rs.partner!, type: 'fiance', metYear: currentYear, yearsTogether: 0 }
+    : { ...p, type: 'fiance', metYear: currentYear, yearsTogether: 0 };
 
   // If we're seating a different person than the current partner,
   // demote them to casualEx.
   let casualExes = rs.casualExes;
-  if (!samePerson && rs.partner) {
+  if (!promoteIncumbent && rs.partner) {
     casualExes = [...casualExes, partnerToCasualEx(rs.partner, currentYear)];
   }
 
@@ -212,6 +232,20 @@ export function addSpouse(state: PlayerState, p: Person, currentYear: number): P
   const guarded = ensureRelationshipState(state);
   const rs = guarded.relationshipState;
 
+  // Promote the current fiance (or partner, if no fiance) when the payload
+  // has no identity supplied — the event author meant "marry whoever is
+  // in the slot." Same convention as addFiance.
+  const noIdentity = !p.firstName && !p.lastName;
+  const promoteFiance = Boolean(
+    rs.fiance && ((p.baseId && rs.fiance.baseId === p.baseId) || noIdentity),
+  );
+  const promotePartner = Boolean(
+    !promoteFiance &&
+      !rs.fiance &&
+      rs.partner &&
+      ((p.baseId && rs.partner.baseId === p.baseId) || noIdentity),
+  );
+
   let significantExes = rs.significantExes;
   if (rs.spouse && (!p.baseId || rs.spouse.baseId !== p.baseId)) {
     significantExes = capSignificantExes([
@@ -220,9 +254,9 @@ export function addSpouse(state: PlayerState, p: Person, currentYear: number): P
     ]);
   }
 
-  // Drop a previous fiance into significantExes if they're not the one
-  // being seated as spouse.
-  if (rs.fiance && (!p.baseId || rs.fiance.baseId !== p.baseId)) {
+  // Drop a previous fiance into significantExes only if we're NOT
+  // promoting them.
+  if (rs.fiance && !promoteFiance) {
     significantExes = capSignificantExes([
       ...significantExes,
       fianceToSignificantEx(rs.fiance, currentYear),
@@ -230,17 +264,17 @@ export function addSpouse(state: PlayerState, p: Person, currentYear: number): P
   }
 
   // Demote any lingering partner — they're not the new spouse so they
-  // become a casualEx (find_date residue).
+  // become a casualEx (find_date residue) unless they're the one being
+  // promoted.
   let casualExes = rs.casualExes;
-  if (rs.partner && (!p.baseId || rs.partner.baseId !== p.baseId)) {
+  if (rs.partner && !promotePartner) {
     casualExes = [...casualExes, partnerToCasualEx(rs.partner, currentYear)];
   }
 
-  const spouse: Spouse = {
-    ...p,
-    type: 'spouse',
-    metYear: p.metYear ?? currentYear,
-  };
+  const source = promoteFiance ? rs.fiance : promotePartner ? rs.partner : null;
+  const spouse: Spouse = source
+    ? { ...source, type: 'spouse', metYear: currentYear }
+    : { ...p, type: 'spouse', metYear: p.metYear ?? currentYear };
 
   return withRelationshipState(guarded, {
     ...rs,
@@ -452,8 +486,18 @@ export function decayRelationships(state: PlayerState): PlayerState {
   const ageOne = <T extends Person>(p: T): T =>
     p.alive ? { ...p, age: p.age + 1 } : p;
 
-  const partner = rs.partner ? ageOne(rs.partner) : null;
-  const fiance = rs.fiance ? ageOne(rs.fiance) : null;
+  // Refresh `yearsTogether` on the slotted romantic partners. Computed
+  // (rather than incremented) so it stays correct after slot promotions
+  // that reset metYear (partner→fiance, fiance→spouse).
+  const refreshYearsTogether = <T extends Person & { yearsTogether?: number }>(
+    p: T,
+  ): T => ({
+    ...p,
+    yearsTogether: Math.max(0, year - (p.metYear ?? year)),
+  });
+
+  const partner = rs.partner ? refreshYearsTogether(ageOne(rs.partner)) : null;
+  const fiance = rs.fiance ? refreshYearsTogether(ageOne(rs.fiance)) : null;
   const spouse = rs.spouse ? ageOne(rs.spouse) : null;
   const family = rs.family.map(ageOne);
 

@@ -89,10 +89,23 @@ export interface Friend extends Person {
 
 export interface Partner extends Person {
   type: 'partner';
+  /**
+   * `currentYear - metYear`, refreshed by `decayRelationships` each tick.
+   * Lets event conditions gate on relationship duration without parsing
+   * `metYear`/`currentYear` separately. Mirror of `yearsSinceContact` on
+   * Friend.
+   */
+  yearsTogether?: number;
 }
 
 export interface Fiance extends Person {
   type: 'fiance';
+  /**
+   * Years spent in the fiance slot specifically — `metYear` is reset to
+   * the engagement year by `addFiance`, so this counts engaged time, not
+   * total time with the same person. Refreshed by `decayRelationships`.
+   */
+  yearsTogether?: number;
 }
 
 export interface Spouse extends Person {
