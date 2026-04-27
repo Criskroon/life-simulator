@@ -111,8 +111,8 @@ export function GameScreen() {
       <div className="w-full max-w-phone">
         <TopBar
           player={player}
-          showReturnHint={activeTab !== 'home'}
-          onReturnHome={returnHome}
+          showBack={activeTab !== 'home'}
+          onBack={returnHome}
         />
 
         {activeTab === 'home' && (
