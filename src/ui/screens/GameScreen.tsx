@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../../game/state/gameStore';
-import { ActivitiesMenu } from '../components/ActivitiesMenu';
+import { ActivitiesMenuV2 } from '../components/activities/ActivitiesMenuV2';
 import { BottomNav, type BottomNavTab } from '../components/BottomNav';
 import { EventModal } from '../components/EventModal';
 import { HeaderStrip } from '../components/HeaderStrip';
@@ -33,7 +33,6 @@ export function GameScreen() {
   const cancelInsufficientChoice = useGameStore((s) => s.cancelInsufficientChoice);
   const openActivitiesMenu = useGameStore((s) => s.openActivitiesMenu);
   const closeActivitiesMenu = useGameStore((s) => s.closeActivitiesMenu);
-  const executeActivityAction = useGameStore((s) => s.executeActivityAction);
   const openProfile = useGameStore((s) => s.openProfile);
   const closeProfile = useGameStore((s) => s.closeProfile);
   const executeRelationshipAction = useGameStore((s) => s.executeRelationshipAction);
@@ -187,11 +186,7 @@ export function GameScreen() {
       )}
 
       {showActivities && (
-        <ActivitiesMenu
-          player={player}
-          onPick={executeActivityAction}
-          onClose={closeActivitiesMenu}
-        />
+        <ActivitiesMenuV2 player={player} onClose={closeActivitiesMenu} />
       )}
 
       {showResolution && lastResolution && (
