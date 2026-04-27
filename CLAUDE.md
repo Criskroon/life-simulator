@@ -27,7 +27,7 @@ careers, and systems on top without restructuring.
 
 ```bash
 npm run dev          # → http://localhost:5180  (5173 is reserved by another project on this machine)
-npm test             # 332 tests (325 engine + 7 UI) — must stay green
+npm test             # 339 tests (325 engine + 14 UI) — must stay green
 npm run build        # tsc -b && vite build
 ```
 

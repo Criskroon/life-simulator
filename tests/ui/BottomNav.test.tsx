@@ -83,4 +83,27 @@ describe('BottomNav', () => {
     });
     expect(queryByTestId('bottom-nav-badge-activities')).toBeNull();
   });
+
+  it('renders the Aging Stone with both "Age" and "+1" labels stacked', () => {
+    const { getByTestId } = renderNav();
+    const fab = getByTestId('bottom-nav-ageup');
+    // Both lines are present as separate text nodes inside the button.
+    expect(fab.textContent).toContain('Age');
+    expect(fab.textContent).toContain('+1');
+  });
+
+  it('marks the FAB with data-pulse="true" when ageUpPulse is set and not disabled', () => {
+    const { getByTestId } = renderNav({ ageUpPulse: true });
+    expect(getByTestId('bottom-nav-ageup').dataset.pulse).toBe('true');
+  });
+
+  it('suppresses the pulse flag when the FAB is disabled, even with ageUpPulse=true', () => {
+    const { getByTestId } = renderNav({ ageUpPulse: true, ageUpDisabled: true });
+    expect(getByTestId('bottom-nav-ageup').dataset.pulse).toBe('false');
+  });
+
+  it('omits the pulse flag when ageUpPulse is not set', () => {
+    const { getByTestId } = renderNav();
+    expect(getByTestId('bottom-nav-ageup').dataset.pulse).toBe('false');
+  });
 });

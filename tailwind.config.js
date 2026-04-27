@@ -50,9 +50,28 @@ export default {
       boxShadow: {
         warm: '0 2px 8px rgba(232, 113, 74, 0.08)',
         'warm-lg': '0 4px 16px rgba(232, 113, 74, 0.12)',
+        // Aging Stone — layered halo for the FAB.
+        stone:
+          '0 0 0 3px rgba(232, 113, 74, 0.12), 0 4px 16px rgba(232, 113, 74, 0.20), 0 8px 32px rgba(232, 113, 74, 0.15)',
       },
       maxWidth: {
         phone: '480px',
+      },
+      keyframes: {
+        'stone-pulse': {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.03)' },
+        },
+        'stone-press': {
+          '0%': { transform: 'scale(1)' },
+          '30%': { transform: 'scale(1.05)' },
+          '60%': { transform: 'scale(0.95)' },
+          '100%': { transform: 'scale(1)' },
+        },
+      },
+      animation: {
+        'stone-pulse': 'stone-pulse 2s ease-in-out infinite',
+        'stone-press': 'stone-press 200ms ease-out',
       },
     },
   },

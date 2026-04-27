@@ -98,30 +98,42 @@ export function GameScreen() {
     setActiveTab(tab);
   };
 
+  const returnHome = () => {
+    if (activeTab === 'home') return;
+    if (activeTab === 'activities') {
+      closeActivitiesMenu();
+    }
+    setActiveTab('home');
+  };
+
   return (
-    <div className="min-h-screen flex justify-center p-4 pb-32">
+    <div className="min-h-screen bg-cream flex justify-center p-4 pb-32">
       <div className="w-full max-w-phone">
-        <TopBar player={player} />
+        <TopBar
+          player={player}
+          showReturnHint={activeTab !== 'home'}
+          onReturnHome={returnHome}
+        />
 
         {activeTab === 'home' && (
           <>
-            <div className="bg-white rounded-2xl shadow-md p-4 mb-4 space-y-2">
-              <StatBar label="Health" value={player.stats.health} color="#ef4444" />
+            <div className="bg-cream-light border border-cream-dark rounded-2xl shadow-warm p-4 mb-4 space-y-2">
+              <StatBar label="Health" value={player.stats.health} stat="health" />
               <StatBar
                 label="Happiness"
                 value={player.stats.happiness}
-                color="#facc15"
+                stat="happiness"
               />
-              <StatBar label="Smarts" value={player.stats.smarts} color="#3b82f6" />
-              <StatBar label="Looks" value={player.stats.looks} color="#ec4899" />
+              <StatBar label="Smarts" value={player.stats.smarts} stat="smarts" />
+              <StatBar label="Looks" value={player.stats.looks} stat="looks" />
             </div>
 
-            <SidePanel player={player} onSelect={openProfile} />
+            <SidePanel player={player} view="history" onSelect={openProfile} />
           </>
         )}
 
         {activeTab === 'people' && (
-          <SidePanel player={player} onSelect={openProfile} />
+          <SidePanel player={player} view="relationships" onSelect={openProfile} />
         )}
 
         {activeTab === 'career' && <TabPlaceholder title="Career" comingIn="1.2" />}
@@ -134,6 +146,7 @@ export function GameScreen() {
         onTabChange={handleTabChange}
         onAgeUp={ageUpYear}
         ageUpDisabled={blockingModalUp}
+        ageUpPulse={player.actionsRemainingThisYear === 0}
         badges={[{ tab: 'activities', count: player.actionsRemainingThisYear }]}
       />
 

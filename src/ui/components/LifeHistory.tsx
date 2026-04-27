@@ -6,7 +6,7 @@ interface LifeHistoryProps {
 
 export function LifeHistory({ history }: LifeHistoryProps) {
   if (history.length === 0) {
-    return <div className="text-slate-500 text-sm italic">No history yet.</div>;
+    return <div className="text-ink-faint text-sm italic">No history yet.</div>;
   }
   // Group by age so the timeline reads top-down by year.
   const byAge = new Map<number, HistoryEntry[]>();
@@ -20,23 +20,23 @@ export function LifeHistory({ history }: LifeHistoryProps) {
   return (
     <div className="flex flex-col gap-3">
       {ages.map((age) => (
-        <div key={age} className="border-l-2 border-slate-300 pl-3">
-          <div className="text-xs font-semibold text-slate-500 mb-1">
+        <div key={age} className="border-l-2 border-cream-dark pl-3">
+          <div className="font-mono text-[11px] uppercase tracking-[0.05em] text-ink-faint mb-1">
             Age {age}
           </div>
           {byAge.get(age)!.map((entry, idx) => (
             <div
               key={`${entry.eventId}-${idx}`}
-              className="text-sm text-slate-700 mb-2"
+              className="text-sm text-ink-soft mb-2"
             >
               <div>{entry.description}</div>
               {entry.choiceLabel && (
-                <div className="text-xs text-slate-500 italic">
+                <div className="text-xs text-ink-faint italic">
                   → {entry.choiceLabel}
                 </div>
               )}
               {entry.outcomeNarrative && (
-                <div className="text-xs text-slate-600 italic mt-0.5">
+                <div className="text-xs text-ink-soft italic mt-0.5">
                   “{entry.outcomeNarrative}”
                 </div>
               )}

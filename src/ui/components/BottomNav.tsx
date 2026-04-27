@@ -1,6 +1,5 @@
-import type { ComponentType, SVGProps } from 'react';
+import { useState, type ComponentType, type SVGProps } from 'react';
 import { ActivitiesIcon } from '../icons/nav/ActivitiesIcon';
-import { AgeUpIcon } from '../icons/nav/AgeUpIcon';
 import { AssetsIcon } from '../icons/nav/AssetsIcon';
 import { CareerIcon } from '../icons/nav/CareerIcon';
 import { PeopleIcon } from '../icons/nav/PeopleIcon';
@@ -18,8 +17,9 @@ export interface BottomNavProps {
   onAgeUp: () => void;
   ageUpDisabled?: boolean;
   badges?: BottomNavBadge[];
-  /** Optional FAB label override; defaults to "Age +1". */
-  ageUpLabel?: string;
+  /** When true, the Aging Stone breathes — used to draw attention when the
+   *  player has spent all their actions for the year. */
+  ageUpPulse?: boolean;
 }
 
 type NavIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
@@ -49,13 +49,33 @@ export function BottomNav({
   onAgeUp,
   ageUpDisabled = false,
   badges,
-  ageUpLabel = 'Age +1',
+  ageUpPulse = false,
 }: BottomNavProps) {
+  const [pressed, setPressed] = useState(false);
+
   const badgeFor = (tab: BottomNavTab): number | undefined => {
     if (!badges) return undefined;
     const hit = badges.find((b) => b.tab === tab);
     return hit && hit.count > 0 ? hit.count : undefined;
   };
+
+  const handleAgeUp = () => {
+    if (ageUpDisabled) return;
+    setPressed(true);
+    onAgeUp();
+    // Match the keyframe duration so a rapid second click can re-trigger.
+    window.setTimeout(() => setPressed(false), 220);
+  };
+
+  // Pulse only when the stone is actually idle and pulsing is requested.
+  const stoneAnimation = pressed
+    ? 'animate-stone-press'
+    : ageUpPulse && !ageUpDisabled
+      ? 'animate-stone-pulse'
+      : '';
+
+  const stoneShadow = ageUpDisabled ? 'shadow-none' : 'shadow-stone';
+  const stoneBg = ageUpDisabled ? 'bg-ink-faint' : 'bg-coral';
 
   return (
     <nav
@@ -78,7 +98,7 @@ export function BottomNav({
         {/* FAB slot — reserves space in the flex row so left/right tabs
             distribute evenly. The actual button is absolutely positioned
             so it can sit slightly above the bar. */}
-        <div className="w-16 flex-shrink-0" aria-hidden="true" />
+        <div className="w-20 flex-shrink-0" aria-hidden="true" />
 
         {RIGHT_TABS.map((spec) => (
           <NavTabButton
@@ -92,14 +112,17 @@ export function BottomNav({
 
         <button
           type="button"
-          onClick={onAgeUp}
+          onClick={handleAgeUp}
           disabled={ageUpDisabled}
-          aria-label={ageUpLabel}
+          aria-label="Age up by one year"
           data-testid="bottom-nav-ageup"
-          className="absolute left-1/2 -translate-x-1/2 -top-5 w-16 h-16 rounded-full bg-coral text-cream-light shadow-warm-lg flex flex-col items-center justify-center gap-0.5 active:scale-95 transition disabled:bg-ink-faint disabled:text-cream disabled:shadow-none"
+          data-pulse={ageUpPulse && !ageUpDisabled ? 'true' : 'false'}
+          className={`absolute left-1/2 -translate-x-1/2 -top-6 w-[76px] h-[76px] rounded-full text-cream-light flex flex-col items-center justify-center transition-colors ${stoneBg} ${stoneShadow} ${stoneAnimation}`}
         >
-          <AgeUpIcon size={22} />
-          <span className="font-mono text-[9px] font-medium uppercase tracking-[0.05em] leading-none">
+          <span className="font-sans text-[11px] font-medium leading-none">
+            Age
+          </span>
+          <span className="font-display text-[22px] font-semibold leading-none mt-[2px]">
             +1
           </span>
         </button>

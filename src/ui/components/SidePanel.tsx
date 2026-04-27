@@ -12,61 +12,30 @@ import type {
 } from '../../game/types/gameState';
 import { LifeHistory } from './LifeHistory';
 
-type Tab = 'history' | 'job' | 'relationships' | 'assets' | 'crime';
+type SidePanelView = 'history' | 'relationships';
 
 type SelectHandler = (person: Person, type: RelationshipType) => void;
 
 interface SidePanelProps {
   player: PlayerState;
+  /** Which surface to render — Home shows history, People shows relationships. */
+  view: SidePanelView;
   /** Optional — when present, relationship rows become clickable. */
   onSelect?: SelectHandler;
 }
 
-export function SidePanel({ player, onSelect }: SidePanelProps) {
-  const [tab, setTab] = useState<Tab>('history');
-
+export function SidePanel({ player, view, onSelect }: SidePanelProps) {
   return (
-    <div className="bg-white rounded-2xl shadow-md overflow-hidden">
-      <div className="flex border-b border-slate-200 text-xs">
-        {(['history', 'job', 'relationships', 'assets', 'crime'] as Tab[]).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={`flex-1 py-2 capitalize ${
-              tab === t
-                ? 'text-slate-900 font-semibold border-b-2 border-slate-900'
-                : 'text-slate-500'
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      <div className="p-4 max-h-72 overflow-y-auto">
-        {tab === 'history' && <LifeHistory history={player.history} />}
-        {tab === 'job' && <JobPanel player={player} />}
-        {tab === 'relationships' && (
+    <div
+      data-testid={`side-panel-${view}`}
+      className="bg-cream-light border border-cream-dark rounded-2xl shadow-warm overflow-hidden"
+    >
+      <div className="p-4 max-h-[28rem] overflow-y-auto">
+        {view === 'history' && <LifeHistory history={player.history} />}
+        {view === 'relationships' && (
           <RelationshipsPanel player={player} onSelect={onSelect} />
         )}
-        {tab === 'assets' && <AssetsPanel player={player} />}
-        {tab === 'crime' && <CrimePanel player={player} />}
       </div>
-    </div>
-  );
-}
-
-function JobPanel({ player }: { player: PlayerState }) {
-  if (!player.job) return <Empty text="Unemployed." />;
-  return (
-    <div className="text-sm text-slate-700 space-y-1">
-      <div className="font-semibold">{player.job.title}</div>
-      <div className="text-slate-500">
-        Salary: ${player.job.salary.toLocaleString()}
-      </div>
-      <div className="text-slate-500">Performance: {player.job.performance}/100</div>
-      <div className="text-slate-500">Years at job: {player.job.yearsAtJob}</div>
     </div>
   );
 }
@@ -93,7 +62,7 @@ function RelationshipsPanel({
   if (!hasAny) return <Empty text="No relationships." />;
 
   return (
-    <div className="space-y-4 text-sm text-slate-700">
+    <div className="space-y-4 text-sm text-ink-soft">
       {(rs.partner || rs.fiance || rs.spouse) && (
         <Section title="Active">
           {rs.spouse && (
@@ -167,7 +136,7 @@ function RelationshipsPanel({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wider text-slate-400 mb-1">
+      <div className="font-mono text-[11px] uppercase tracking-[0.05em] text-ink-faint mb-1">
         {title}
       </div>
       <ul className="space-y-1">{children}</ul>
@@ -182,7 +151,7 @@ function Collapsible({ title, children }: { title: string; children: React.React
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between text-xs uppercase tracking-wider text-slate-400 mb-1"
+        className="w-full flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.05em] text-ink-faint mb-1"
       >
         <span>{title}</span>
         <span>{open ? '▾' : '▸'}</span>
@@ -206,15 +175,15 @@ function ClickableRow({
 }) {
   if (!onClick) {
     return (
-      <li className="border-b border-slate-100 pb-1 last:border-0">{children}</li>
+      <li className="border-b border-cream-dark pb-1 last:border-0">{children}</li>
     );
   }
   return (
-    <li className="border-b border-slate-100 pb-1 last:border-0">
+    <li className="border-b border-cream-dark pb-1 last:border-0">
       <button
         type="button"
         onClick={onClick}
-        className="w-full text-left rounded-lg px-1 py-0.5 -mx-1 hover:bg-slate-50 transition cursor-pointer"
+        className="w-full text-left rounded-lg px-1 py-0.5 -mx-1 hover:bg-cream-dark/40 transition cursor-pointer"
       >
         {children}
       </button>
@@ -235,12 +204,12 @@ function SlotRow({
 }) {
   return (
     <ClickableRow onClick={onSelect ? () => onSelect(person, type) : undefined}>
-      <div className="font-medium">{label}</div>
-      <div className="text-slate-500">
+      <div className="font-medium text-ink">{label}</div>
+      <div className="text-ink-soft">
         {person.firstName} {person.lastName} — age {person.age}
         {!person.alive && ' (deceased)'}
       </div>
-      <div className="text-xs text-slate-400">
+      <div className="font-mono text-[11px] text-ink-faint">
         Bond: {person.relationshipLevel}/100
       </div>
     </ClickableRow>
@@ -256,12 +225,12 @@ function FamilyRow({
 }) {
   return (
     <ClickableRow onClick={onSelect ? () => onSelect(member, member.type) : undefined}>
-      <div className="font-medium capitalize">{member.type}</div>
-      <div className="text-slate-500">
+      <div className="font-medium capitalize text-ink">{member.type}</div>
+      <div className="text-ink-soft">
         {member.firstName} {member.lastName} — age {member.age}
         {!member.alive && ' (deceased)'}
       </div>
-      <div className="text-xs text-slate-400">
+      <div className="font-mono text-[11px] text-ink-faint">
         Closeness: {member.relationshipLevel}/100
       </div>
     </ClickableRow>
@@ -277,13 +246,13 @@ function FriendRow({
 }) {
   return (
     <ClickableRow onClick={onSelect ? () => onSelect(friend, 'friend') : undefined}>
-      <div className="font-medium">
-        Friend{friend.isBestFriend && <span className="ml-2 text-amber-500">★ best</span>}
+      <div className="font-medium text-ink">
+        Friend{friend.isBestFriend && <span className="ml-2 text-brass">★ best</span>}
       </div>
-      <div className="text-slate-500">
+      <div className="text-ink-soft">
         {friend.firstName} {friend.lastName} — age {friend.age}
       </div>
-      <div className="text-xs text-slate-400">
+      <div className="font-mono text-[11px] text-ink-faint">
         Closeness: {friend.relationshipLevel}/100
         {friend.yearsSinceContact > 1 &&
           ` · last spoke ${friend.yearsSinceContact}y ago`}
@@ -312,50 +281,22 @@ function ExRow({
   const exType: RelationshipType = kind === 'casual' ? 'casualEx' : 'significantEx';
   return (
     <ClickableRow onClick={onSelect ? () => onSelect(ex, exType) : undefined}>
-      <div className="font-medium capitalize">
+      <div className="font-medium capitalize text-ink">
         {ex.type === 'casualEx' ? 'Casual ex' : 'Significant ex'}
         {ex.formerSlot && (
-          <span className="ml-2 text-xs text-slate-400">
+          <span className="ml-2 font-mono text-[11px] text-ink-faint">
             (former {ex.formerSlot})
           </span>
         )}
       </div>
-      <div className="text-slate-500">
+      <div className="text-ink-soft">
         {ex.firstName} {ex.lastName} — age {ex.age}
       </div>
-      {meta && <div className="text-xs text-slate-400">{meta}</div>}
+      {meta && <div className="font-mono text-[11px] text-ink-faint">{meta}</div>}
     </ClickableRow>
   );
 }
 
-function AssetsPanel({ player }: { player: PlayerState }) {
-  if (player.assets.length === 0) return <Empty text="No assets owned." />;
-  return (
-    <ul className="text-sm text-slate-700 space-y-1">
-      {player.assets.map((a) => (
-        <li key={a.id}>
-          {a.name} — ${a.currentValue.toLocaleString()}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function CrimePanel({ player }: { player: PlayerState }) {
-  if (player.criminalRecord.length === 0) {
-    return <Empty text="Clean record. So far." />;
-  }
-  return (
-    <ul className="text-sm text-slate-700 space-y-1">
-      {player.criminalRecord.map((c) => (
-        <li key={c.id}>
-          {c.crime} (age {c.age}) {c.caught ? '— caught' : '— got away'}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function Empty({ text }: { text: string }) {
-  return <div className="text-slate-500 italic text-sm">{text}</div>;
+  return <div className="text-ink-faint italic text-sm">{text}</div>;
 }
