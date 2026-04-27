@@ -1,17 +1,17 @@
-import type { WorldIconKey } from './worlds';
+import type { SectionIconKey } from './sections';
 
-interface WorldIconProps {
-  iconKey: WorldIconKey;
+interface SectionIconProps {
+  iconKey: SectionIconKey;
   size?: number;
 }
 
 /**
- * Inline SVG icon set for the eight Worlds. Stroke style follows the
+ * Inline SVG icon set for the eight Sections. Stroke style follows the
  * Sunny Side icon spec (1.8px, round caps/joins, currentColor).
  * Drawing language matches `sunny-kit.jsx` Icon glyphs so the family
  * stays visually consistent if more screens reuse them later.
  */
-export function WorldIcon({ iconKey, size = 28 }: WorldIconProps) {
+export function SectionIcon({ iconKey, size = 28 }: SectionIconProps) {
   const common = {
     width: size,
     height: size,

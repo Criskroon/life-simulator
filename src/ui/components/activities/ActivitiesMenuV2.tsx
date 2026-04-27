@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import type { PlayerState } from '../../../game/types/gameState';
 import { useComingSoon } from '../ComingSoonHandler';
-import { WorldCard } from './WorldCard';
-import { WORLDS } from './worlds';
+import { SectionCard } from './SectionCard';
+import { SECTIONS } from './sections';
 
 interface ActivitiesMenuV2Props {
   player: PlayerState;
@@ -11,11 +11,11 @@ interface ActivitiesMenuV2Props {
 
 /**
  * Activities surface — the player's "what do you do this year" choice.
- * Eight Worlds laid out 2 × 4. Each tap fires a Coming-soon toast for now
+ * Eight Sections laid out 2 × 4. Each tap fires a Coming-soon toast for now
  * (engine wiring lives in later sessions); the grid itself is the lasting
  * navigation surface.
  *
- * TODO(engine): swap `useComingSoon` calls for navigation into per-World
+ * TODO(engine): swap `useComingSoon` calls for navigation into per-Section
  * detail screens (e.g. `<TheBodyScreen />`) once those exist.
  */
 export function ActivitiesMenuV2({ player, onClose }: ActivitiesMenuV2Props) {
@@ -66,18 +66,18 @@ export function ActivitiesMenuV2({ player, onClose }: ActivitiesMenuV2Props) {
         </header>
 
         <p className="px-5 pb-3 font-sans text-[12.5px] italic leading-snug text-ink-soft">
-          Eight worlds. Pick where to spend a year of your life.
+          Eight ways to spend a year.
         </p>
 
         <div
-          data-testid="activities-worlds-grid"
+          data-testid="activities-sections-grid"
           className="grid grid-cols-2 gap-3 overflow-y-auto px-5 pb-5"
         >
-          {WORLDS.map((world) => (
-            <WorldCard
-              key={world.key}
-              world={world}
-              onClick={() => showComingSoon(world.name, world.toastDetail)}
+          {SECTIONS.map((section) => (
+            <SectionCard
+              key={section.key}
+              section={section}
+              onClick={() => showComingSoon(section.name, section.toastDetail)}
             />
           ))}
         </div>

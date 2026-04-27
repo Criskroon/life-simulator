@@ -1,10 +1,10 @@
 /**
- * The eight Worlds — canonical list shared by ActivitiesMenuV2 and any
- * future per-World detail screens. Section tokens map to tailwind
+ * The eight Sections — canonical list shared by ActivitiesMenuV2 and any
+ * future per-Section detail screens. Section tokens map to tailwind
  * `section.*` colours defined in tailwind.config.js.
  */
 
-export type WorldKey =
+export type SectionKey =
   | 'body'
   | 'mind'
   | 'town'
@@ -14,7 +14,7 @@ export type WorldKey =
   | 'shadows'
   | 'mirror';
 
-export type WorldIconKey =
+export type SectionIconKey =
   | 'gym'
   | 'book'
   | 'cup'
@@ -24,18 +24,18 @@ export type WorldIconKey =
   | 'mask'
   | 'sparkles';
 
-export interface World {
-  key: WorldKey;
+export interface Section {
+  key: SectionKey;
   name: string;
   tagline: string;
   /** Tailwind background utility for the icon block (e.g. `bg-section-body`). */
   bgClass: string;
-  iconKey: WorldIconKey;
+  iconKey: SectionIconKey;
   /** Sub-line shown by the Coming-soon toast — Sunny Side voice. */
   toastDetail: string;
 }
 
-export const WORLDS: ReadonlyArray<World> = [
+export const SECTIONS: ReadonlyArray<Section> = [
   {
     key: 'body',
     name: 'The Body',
