@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  adjustPrice,
   adjustSalary,
   getCurrentCountry,
 } from '../../../game/engine/countryEngine';
@@ -9,18 +10,21 @@ import type {
   PlayerState,
 } from '../../../game/types/gameState';
 import { useComingSoon } from '../ComingSoonHandler';
+import { CareerHistorySection } from './CareerHistorySection';
 import { CollapsibleSection } from './CollapsibleSection';
 import { CurrentPositionCard } from './CurrentPositionCard';
 import { FIND_WORK_LISTINGS, SPECIAL_CAREERS } from './careerData';
+import { InlineActionRows } from './InlineActionRows';
 import { JobListing } from './JobListing';
 
 interface CareerScreenProps {
   player: PlayerState;
 }
 
-const TOTAL_ACTIONS = 3;
+/** GB-baseline price for a short professional course; localised at render. */
+const TRAINING_COURSE_BASE_PRICE = 1200;
 
-type SectionId = 'current' | 'education' | 'find' | 'special';
+type SectionId = 'education' | 'find' | 'special';
 
 const EDUCATION_LABEL: Record<EducationLevel, string> = {
   primary: 'Primary school',
@@ -32,19 +36,22 @@ const EDUCATION_LABEL: Record<EducationLevel, string> = {
 };
 
 /**
- * Career tab — a status overview, not a flow. Renders inline under the
- * shared `HeaderStrip` (matching the People tab's slot) so the player
- * can drop in, scan their working life, and back out without modal
- * chrome. Four collapsible sections; only Current Position is open by
- * default. All actions still route through `useComingSoon` until the
- * career engine wiring lands.
+ * Career tab — a status overview, not a flow. The screen reads top-down:
+ * a header strip with life-stage / year / live job summary, then either
+ * a rich Current Position card with embedded "this year" actions (when
+ * employed) or an unemployed empty-state CTA, then collapsible sections
+ * for Education / Find Work / Special Careers, and a quiet History
+ * footer pinned to the bottom.
+ *
+ * All actions still route through `useComingSoon` until the career
+ * engine wiring lands.
  */
 export function CareerScreen({ player }: CareerScreenProps) {
   const { showComingSoon } = useComingSoon();
   const country = getCurrentCountry(player);
   const symbol = country.currency.symbol;
   const [openSections, setOpenSections] = useState<Set<SectionId>>(
-    () => new Set(['current']),
+    () => new Set<SectionId>(),
   );
 
   const toggle = (id: SectionId) => {
@@ -56,9 +63,9 @@ export function CareerScreen({ player }: CareerScreenProps) {
     });
   };
 
-  const remaining = player.actionsRemainingThisYear;
   const job = player.job;
   const currentEducation = pickCurrentEducation(player.education);
+  const lifeStage = lifeStageFor(player.age);
 
   const formatYearlySalary = (salary: number): string =>
     `${symbol}${salary.toLocaleString()}/yr`;
@@ -69,97 +76,55 @@ export function CareerScreen({ player }: CareerScreenProps) {
     return `${symbol}${monthly.toLocaleString()}/mo`;
   };
 
+  const trainingCostLabel = `-${symbol}${adjustPrice(
+    TRAINING_COURSE_BASE_PRICE,
+    country,
+  ).toLocaleString()}`;
+
+  const subtitle = job
+    ? `${job.title} · ${job.yearsAtJob === 0 ? 'New this year' : `${job.yearsAtJob}y on the job`}`
+    : `Unemployed · ${player.currentYear}`;
+
   return (
     <div data-testid="career-screen" className="space-y-3 pb-2">
-      {/* Header — eyebrow / headline / pips / tagline. Sits inside the
-          tab body, beneath the shared HeaderStrip. */}
+      {/* Header — eyebrow (life stage · year), display "Career", subtitle
+          live job summary. No action-point pips here per mockup. */}
       <div className="rounded-2xl border border-cream-dark bg-cream-light px-4 py-3 shadow-warm">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-brass">
-              Career
-            </div>
-            <h2 className="mt-1 font-display text-[22px] font-bold leading-[1.05] tracking-[-0.025em] text-ink">
-              Earn, climb, get out.
-            </h2>
-            <p className="mt-1 font-sans text-[12.5px] italic leading-snug text-ink-soft">
-              The hours you trade. The story you tell about them.
-            </p>
-          </div>
-          <div className="shrink-0">
-            <ActionPointPips remaining={remaining} total={TOTAL_ACTIONS} />
-          </div>
+        <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-brass">
+          {lifeStage} · {player.currentYear}
         </div>
+        <h2 className="mt-1 font-display text-[24px] font-bold leading-[1.05] tracking-[-0.025em] text-ink">
+          Career
+        </h2>
+        <p
+          data-testid="career-header-subtitle"
+          className="mt-1 font-sans text-[12.5px] leading-snug text-ink-soft"
+        >
+          {subtitle}
+        </p>
       </div>
 
-      {/* Current Position */}
-      <CollapsibleSection
-        sectionId="current"
-        title="Current position"
-        eyebrow={
-          job
-            ? `On the clock since ${player.currentYear - job.yearsAtJob}.`
-            : 'Nobody is paying you yet.'
-        }
-        meta={job ? undefined : 'Unemployed'}
-        open={openSections.has('current')}
-        onToggle={() => toggle('current')}
-      >
-        {job ? (
-          <div className="space-y-3">
-            <CurrentPositionCard
-              job={job}
-              salaryLabel={formatYearlySalary(job.salary)}
-            />
-            <div className="space-y-2">
-              <ActionPill
-                label="Ask for a raise"
-                hint="Walk in. Don't apologise."
-                onClick={() =>
-                  showComingSoon(
-                    'Ask for a raise',
-                    'Salary negotiation arrives with the career pass.',
-                  )
-                }
-                testId="career-action-raise"
-              />
-              <ActionPill
-                label="Network at work"
-                hint="Coffee with the right person beats a memo."
-                onClick={() =>
-                  showComingSoon(
-                    'Network at work',
-                    'Workplace politics arrive with the career pass.',
-                  )
-                }
-                testId="career-action-network"
-              />
-              <ActionPill
-                label="Quit"
-                hint="One short conversation. A long quiet after."
-                tone="danger"
-                onClick={() =>
-                  showComingSoon(
-                    'Quit',
-                    'Leaving on your own terms lands later.',
-                  )
-                }
-                testId="career-action-quit"
-              />
-            </div>
-          </div>
-        ) : (
-          <EmptyJobState
-            onCta={() => {
-              setOpenSections((prev) => {
-                const next = new Set(prev);
-                next.add('find');
-                return next;
-              });
-            }}
+      {job ? (
+        <>
+          <CurrentPositionCard
+            player={player}
+            job={job}
+            salaryLabel={formatYearlySalary(job.salary)}
+            currencySymbol={symbol}
           />
-        )}
-      </CollapsibleSection>
+          <InlineActionRows job={job} trainingCostLabel={trainingCostLabel} />
+        </>
+      ) : (
+        <EmptyJobState
+          onCta={() => {
+            setOpenSections((prev) => {
+              const next = new Set(prev);
+              next.add('find');
+              return next;
+            });
+          }}
+        />
+      )}
 
       {/* Education */}
       <CollapsibleSection
@@ -172,7 +137,7 @@ export function CareerScreen({ player }: CareerScreenProps) {
               : `Still in ${EDUCATION_LABEL[currentEducation.level].toLowerCase()}.`
             : 'No school of your own choosing yet.'
         }
-        meta={currentEducation ? EDUCATION_LABEL[currentEducation.level] : undefined}
+        meta={currentEducation ? EDUCATION_LABEL[currentEducation.level] : '9 paths'}
         open={openSections.has('education')}
         onToggle={() => toggle('education')}
       >
@@ -240,7 +205,7 @@ export function CareerScreen({ player }: CareerScreenProps) {
         sectionId="find"
         title="Find work"
         eyebrow="What's hiring this year, in your city."
-        meta={`${FIND_WORK_LISTINGS.length} open`}
+        meta={`${FIND_WORK_LISTINGS.length} channels`}
         open={openSections.has('find')}
         onToggle={() => toggle('find')}
       >
@@ -268,7 +233,7 @@ export function CareerScreen({ player }: CareerScreenProps) {
         sectionId="special"
         title="Special careers"
         eyebrow="Different rules. Different odds."
-        meta={`${SPECIAL_CAREERS.length} paths`}
+        meta={`${SPECIAL_CAREERS.length} dreams`}
         open={openSections.has('special')}
         onToggle={() => toggle('special')}
       >
@@ -285,6 +250,9 @@ export function CareerScreen({ player }: CareerScreenProps) {
           ))}
         </div>
       </CollapsibleSection>
+
+      {/* History — pinned, never collapsible. */}
+      <CareerHistorySection />
     </div>
   );
 }
@@ -298,9 +266,9 @@ interface ActionPillProps {
 }
 
 /**
- * Small text-only row for in-section actions (Ask for a raise, Drop out…).
- * Visually quieter than `JobListing` so a section's actions don't compete
- * with its primary content (the position card or education record).
+ * Small text-only row for in-section actions (Apply for university,
+ * Drop out). Visually quieter than `JobListing` so a section's actions
+ * don't compete with its primary content.
  */
 function ActionPill({ label, hint, onClick, tone = 'default', testId }: ActionPillProps) {
   const labelColor = tone === 'danger' ? 'text-danger' : 'text-ink';
@@ -329,17 +297,17 @@ interface EmptyJobStateProps {
 }
 
 /**
- * Shown inside Current Position when the player has no `job`. The CTA
- * pops Find Work open (rather than scrolling to it) so the player sees
- * something happen even if Find Work is just below the fold.
+ * Shown in place of the rich position card when the player has no job.
+ * The CTA pops Find Work open (rather than scrolling to it) so the
+ * player sees something happen even if Find Work is below the fold.
  */
 function EmptyJobState({ onCta }: EmptyJobStateProps) {
   return (
     <div
       data-testid="career-empty-job"
-      className="flex items-center gap-3 rounded-2xl border border-dashed border-cream-dark bg-cream px-4 py-3"
+      className="flex items-center gap-3 rounded-2xl border border-dashed border-cream-dark bg-cream-light px-4 py-4 shadow-warm"
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-cream-dark bg-cream-light text-ink-faint">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-cream-dark bg-cream text-ink-faint">
         <BriefcaseGlyph />
       </div>
       <div className="min-w-0 flex-1">
@@ -358,38 +326,6 @@ function EmptyJobState({ onCta }: EmptyJobStateProps) {
       >
         Find your first job
       </button>
-    </div>
-  );
-}
-
-interface ActionPointPipsProps {
-  remaining: number;
-  total: number;
-}
-
-/**
- * Mirrors the dot strip used in `ActivitiesMenuV2` and the section
- * detail screens so the Career tab reads as part of the same family
- * even though it's not modal-chromed.
- */
-function ActionPointPips({ remaining, total }: ActionPointPipsProps) {
-  const filled = Math.max(0, Math.min(total, remaining));
-  return (
-    <div
-      aria-label={`${filled} of ${total} actions left`}
-      className="flex items-center gap-[5px]"
-      data-testid="career-action-pips"
-    >
-      {Array.from({ length: total }, (_, i) => i < filled).map((isFilled, i) => (
-        <span
-          key={i}
-          className={`block h-[10px] w-[10px] rounded-full border ${
-            isFilled
-              ? 'border-coral bg-coral'
-              : 'border-cream-dark bg-transparent'
-          }`}
-        />
-      ))}
     </div>
   );
 }
@@ -426,4 +362,18 @@ function pickCurrentEducation(
   const inProgress = education.find((e) => e.endYear === null);
   if (inProgress) return inProgress;
   return [...education].sort((a, b) => (b.endYear ?? 0) - (a.endYear ?? 0))[0];
+}
+
+/**
+ * Bucket the player's age into a life-stage label for the header
+ * eyebrow. Boundaries chosen to match the rough event-content tiers
+ * (`childhood`, `youth`, `adulthood`, `later years`) without coupling
+ * this label to the engine's content categories.
+ */
+function lifeStageFor(age: number): string {
+  if (age < 13) return 'CHILDHOOD';
+  if (age < 18) return 'YOUTH';
+  if (age < 30) return 'YOUNG ADULTHOOD';
+  if (age < 60) return 'ADULTHOOD';
+  return 'LATER YEARS';
 }

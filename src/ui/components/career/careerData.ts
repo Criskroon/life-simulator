@@ -58,6 +58,84 @@ export interface SpecialCareerSpec {
   toastDetail: string;
 }
 
+/**
+ * Mock company-name lookup keyed by the engine's `careerId`. The engine
+ * has no employer concept; the rich Current Position card needs *some*
+ * company name for the secondary line ("ING · Amsterdam · 5y") to read
+ * naturally, so we synthesise one from the careerId. Values are bland on
+ * purpose — they exist to ground the layout, not to invent flavour the
+ * engine can't back.
+ */
+export const COMPANY_BY_CAREER: Record<string, string> = {
+  software: 'Tech corp',
+  medicine: 'Local hospital',
+  retail: 'Supermarket chain',
+  teaching: 'Local school',
+  trades: 'Independent',
+};
+
+/**
+ * Mock city-by-country lookup. Country records hold no city data, so we
+ * pick the most-recognisable city per country code. Falls back to '—' so
+ * a save with an unfamiliar code still renders cleanly. Uppercased at
+ * render time to match the eyebrow style.
+ */
+export const CITY_BY_COUNTRY: Record<string, string> = {
+  NL: 'Amsterdam',
+  US: 'New York',
+  GB: 'London',
+};
+
+/**
+ * Vignette copy keyed by performance star bucket (1..5). Surfaced as the
+ * italic line at the bottom of the Current Position card. Author-curated
+ * single-line observations in Sunny Side voice — what a manager might
+ * actually be thinking when they look at the player's last review.
+ */
+export const VIGNETTE_BY_STARS: Record<number, string> = {
+  1: 'They\'ve noticed. So have you.',
+  2: 'You\'re showing up. That\'s not the same as showing.',
+  3: 'Reliable. Quiet. Hard to argue with.',
+  4: 'Strong year. The next one will be watched.',
+  5: 'Two more strong years and a leadership push could open the door.',
+};
+
+export interface CareerHistoryEntry {
+  id: string;
+  title: string;
+  company: string;
+  /** Inclusive years on the job — used to print "1990–1995". */
+  startYear: number;
+  endYear: number;
+  /** Short Sunny Side reason — never an HR euphemism. */
+  reason: string;
+}
+
+/**
+ * Mock past-jobs ledger. The engine has no concept of a job history yet
+ * (`player.job` is single-slot), so the HISTORY section reads from this
+ * fixed table to demonstrate the layout. When job history lands in the
+ * engine, this constant goes away and the section reads from state.
+ */
+export const MOCK_CAREER_HISTORY: ReadonlyArray<CareerHistoryEntry> = [
+  {
+    id: 'mock-history-1',
+    title: 'Junior Analyst',
+    company: 'ING',
+    startYear: 1989,
+    endYear: 1991,
+    reason: 'Promoted internally.',
+  },
+  {
+    id: 'mock-history-2',
+    title: 'Intern',
+    company: 'Rabobank',
+    startYear: 1988,
+    endYear: 1989,
+    reason: 'Six months. Learned what suit to buy.',
+  },
+];
+
 export const SPECIAL_CAREERS: ReadonlyArray<SpecialCareerSpec> = [
   {
     id: 'acting',
