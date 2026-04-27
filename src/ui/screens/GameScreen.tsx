@@ -5,6 +5,7 @@ import { BottomNav, type BottomNavTab } from '../components/BottomNav';
 import { EventModal } from '../components/EventModal';
 import { HeaderStrip } from '../components/HeaderStrip';
 import { InsufficientFundsModal } from '../components/InsufficientFundsModal';
+import { PeopleScreenWithPets } from '../components/PeopleScreenWithPets';
 import { RelationshipProfileModal } from '../components/RelationshipProfileModal';
 import { ResolutionModal } from '../components/ResolutionModal';
 import { SidePanel } from '../components/SidePanel';
@@ -126,7 +127,7 @@ export function GameScreen() {
               onClose={returnHome}
             />
             {activeTab === 'people' && (
-              <SidePanel player={player} view="relationships" onSelect={openProfile} />
+              <PeopleScreenWithPets player={player} onSelectPerson={openProfile} />
             )}
             {activeTab === 'career' && <TabPlaceholder title="Career" comingIn="1.2" />}
             {activeTab === 'assets' && <TabPlaceholder title="Assets" comingIn="1.3" />}
