@@ -3,6 +3,7 @@ import { useGameStore } from '../../game/state/gameStore';
 import { ActivitiesMenuV2 } from '../components/activities/ActivitiesMenuV2';
 import type { ActivitySpec } from '../components/activities/activitySpec';
 import { BODY_ACTIVITIES } from '../components/activities/bodyActivities';
+import { CareerScreen } from '../components/career/CareerScreen';
 import { HEART_ACTIVITIES } from '../components/activities/heartActivities';
 import { MIND_ACTIVITIES } from '../components/activities/mindActivities';
 import { MIRROR_ACTIVITIES } from '../components/activities/mirrorActivities';
@@ -173,7 +174,7 @@ export function GameScreen() {
             {activeTab === 'people' && (
               <PeopleScreenWithPets player={player} onSelectPerson={openProfile} />
             )}
-            {activeTab === 'career' && <TabPlaceholder title="Career" comingIn="1.2" />}
+            {activeTab === 'career' && <CareerScreen player={player} />}
             {activeTab === 'assets' && <TabPlaceholder title="Assets" comingIn="1.3" />}
           </>
         ) : (
