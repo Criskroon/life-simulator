@@ -100,9 +100,10 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
     weight: 0.6,
     minAge: 22,
     maxAge: 50,
-    // No oncePerLife — `lacks spouse` already gates re-proposals so divorced
-    // or widowed players can re-marry. Without this, the second-marriage
-    // narrative shape was structurally impossible.
+    // Pressure event, not a proposal: it surfaces the thought, and the
+    // player decides what to do with it. The actual proposal lives on
+    // `partner.propose` (X3a-2) so it stays a deliberate, profile-driven
+    // action — not a random roll that auto-promotes someone to spouse.
     conditions: [
       { path: 'relationships', op: 'has', value: 'partner' },
       { path: 'relationships', op: 'lacks', value: 'spouse' },
@@ -111,75 +112,25 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
     description: 'You\'ve been together a while. The thought won\'t go away.',
     choices: [
       {
-        label: 'Get the ring',
-        cost: -4500,
-        outcomes: [
-          {
-            weight: 70,
-            narrative: 'They cry the good kind of cry and say yes before you finish the question. You forget half of what you planned to say.',
-            effects: [
-              { path: 'money', op: '-', value: 4500 },
-              { path: 'stats.happiness', op: '+', value: 14 },
-              // Partner becomes spouse — sweep every partner-base so old
-              // dating records don't hang around alongside the marriage.
-              { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
-              { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
-              { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
-              { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
-              { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
-              {
-                special: 'addRelationship',
-                payload: {
-                  id: 'rel-spouse',
-                  type: 'spouse',
-                  age: 28,
-                  alive: true,
-                  relationshipLevel: 88,
-                },
-              },
-            ],
-          },
-          {
-            weight: 20,
-            narrative: 'They ask for time to think. Two weeks of awful silence later, they say yes — but the magic is bruised.',
-            effects: [
-              { path: 'money', op: '-', value: 4500 },
-              { path: 'stats.happiness', op: '+', value: 5 },
-              { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
-              { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
-              { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
-              { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
-              { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
-              {
-                special: 'addRelationship',
-                payload: {
-                  id: 'rel-spouse',
-                  type: 'spouse',
-                  age: 28,
-                  alive: true,
-                  relationshipLevel: 70,
-                },
-              },
-            ],
-          },
-          {
-            weight: 10,
-            narrative: 'They say no. You spend the rest of the year figuring out where the ring goes and what to call them now.',
-            effects: [
-              { path: 'money', op: '-', value: 4500 },
-              { path: 'stats.happiness', op: '-', value: 16 },
-              { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
-              { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
-              { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
-              { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
-              { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
-            ],
-          },
+        label: 'Bring it up over dinner',
+        effects: [
+          { path: 'stats.happiness', op: '+', value: 5 },
+          { special: 'adjustRelationshipLevel', payload: { slot: 'partner', delta: 6 } },
         ],
       },
       {
-        label: 'Wait another year',
-        effects: [{ path: 'stats.happiness', op: '-', value: 2 }],
+        label: 'Tell them you\'re not ready',
+        effects: [
+          { path: 'stats.happiness', op: '-', value: 6 },
+          { special: 'adjustRelationshipLevel', payload: { slot: 'partner', delta: -8 } },
+        ],
+      },
+      {
+        label: 'Change the subject',
+        effects: [
+          { path: 'stats.happiness', op: '-', value: 2 },
+          { special: 'adjustRelationshipLevel', payload: { slot: 'partner', delta: -2 } },
+        ],
       },
     ],
   },
@@ -379,91 +330,35 @@ export const RELATIONSHIP_EVENTS: GameEvent[] = [
     weight: 0.4,
     minAge: 22,
     maxAge: 50,
-    // No oncePerLife — see rel_propose. `lacks spouse` already gates this
-    // so re-marriage after divorce/widowhood is possible.
+    // Soft pressure event — partner hints, no auto-promotion. The actual
+    // engagement still has to come from `partner.propose` (X3a-2). Keeps
+    // the engagement decision deliberate instead of a random outcome roll.
     conditions: [
       { path: 'relationships', op: 'has', value: 'partner' },
       { path: 'relationships', op: 'lacks', value: 'spouse' },
     ],
-    title: 'They Proposed',
-    description: 'Your partner is on one knee. The whole restaurant is watching.',
+    title: 'They\'re Hinting',
+    description: 'They\'ve started leaving wedding magazines on the coffee table. The look is getting harder to miss.',
     choices: [
       {
-        label: 'Yes — yes, of course',
+        label: 'Tell them you feel the same',
         effects: [
-          { path: 'stats.happiness', op: '+', value: 14 },
-          { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
-          { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
-          { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
-          { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
-          { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
-          {
-            special: 'addRelationship',
-            payload: {
-              id: 'rel-spouse',
-              type: 'spouse',
-              age: 28,
-              alive: true,
-              relationshipLevel: 90,
-            },
-          },
+          { path: 'stats.happiness', op: '+', value: 6 },
+          { special: 'adjustRelationshipLevel', payload: { slot: 'partner', delta: 8 } },
         ],
       },
       {
-        label: 'I need time to think',
-        outcomes: [
-          {
-            weight: 40,
-            narrative: 'They give you the space. A month later you say yes, calmer this time. The wedding is smaller.',
-            effects: [
-              { path: 'stats.happiness', op: '+', value: 6 },
-              { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
-              { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
-              { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
-              { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
-              { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
-              {
-                special: 'addRelationship',
-                payload: {
-                  id: 'rel-spouse',
-                  type: 'spouse',
-                  age: 28,
-                  alive: true,
-                  relationshipLevel: 75,
-                },
-              },
-            ],
-          },
-          {
-            weight: 35,
-            narrative: 'They\'re hurt and don\'t hide it. The relationship limps on for a few months before quietly ending.',
-            effects: [
-              { path: 'stats.happiness', op: '-', value: 10 },
-              { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
-              { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
-              { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
-              { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
-              { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
-            ],
-          },
-          {
-            weight: 25,
-            narrative: 'They smile, take it back, and say "okay, when you\'re ready." You stay together but the ring goes back in a drawer.',
-            effects: [
-              { path: 'stats.happiness', op: '-', value: 2 },
-            ],
-          },
+        label: 'Ask for time',
+        effects: [
+          { path: 'stats.happiness', op: '-', value: 3 },
+          { special: 'adjustRelationshipLevel', payload: { slot: 'partner', delta: -4 } },
         ],
       },
       {
-        label: 'No. I\'m sorry.',
+        label: 'Tell them it\'s not going to happen',
         effects: [
-          { path: 'stats.happiness', op: '-', value: 12 },
-          { special: 'removeRelationship', payload: { id: 'rel-date-partner' } },
-          { special: 'removeRelationship', payload: { id: 'rel-coworker-partner' } },
-          { special: 'removeRelationship', payload: { id: 'rel-blind-date' } },
-          { special: 'removeRelationship', payload: { id: 'rel-vacation-romance' } },
-          { special: 'removeRelationship', payload: { id: 'rel-activity-partner' } },
+          { path: 'stats.happiness', op: '-', value: 8 },
+          { special: 'adjustRelationshipLevel', payload: { slot: 'partner', delta: -15 } },
         ],
       },
     ],

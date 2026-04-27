@@ -186,10 +186,22 @@ const SPECIAL_HANDLERS: Record<string, SpecialHandler> = {
   },
 
   adjustRelationshipLevel: (state, payload) => {
+    const delta = typeof payload.delta === 'number' ? payload.delta : 0;
+    if (delta === 0) return state;
+    // `slot` lets event authors target the current partner/fiance/spouse
+    // without knowing the minted id — events don't get target context the
+    // way action interactions do (interactions.ts injects targetId from the
+    // clicked Person; events just emit raw effects).
+    const slot = payload.slot as 'partner' | 'fiance' | 'spouse' | undefined;
+    if (slot) {
+      const rs = ensureRelationshipState(state).relationshipState;
+      const person = rs[slot];
+      if (!person) return state;
+      return adjustPersonRelationshipLevel(state, person.id, delta);
+    }
     const targetId =
       (payload.targetId as string | undefined) ?? (payload.id as string | undefined);
-    const delta = typeof payload.delta === 'number' ? payload.delta : 0;
-    if (!targetId || delta === 0) return state;
+    if (!targetId) return state;
     return adjustPersonRelationshipLevel(state, targetId, delta);
   },
 
@@ -459,22 +471,29 @@ function summarizeSpecial(effect: Effect, state: PlayerState): SpecialSummary | 
     case 'resetFriendContact':
       return null;
     case 'adjustRelationshipLevel': {
-      const targetId =
-        (payload.targetId as string | undefined) ??
-        (payload.id as string | undefined);
       const delta = typeof payload.delta === 'number' ? payload.delta : 0;
-      if (!targetId || delta === 0) return null;
-      // Look up the person across slots/lists to give a friendly label.
+      if (delta === 0) return null;
+      const slot = payload.slot as 'partner' | 'fiance' | 'spouse' | undefined;
       const rs = state.relationshipState;
-      const matches = (p: Person) => p.id === targetId || p.baseId === targetId;
-      const candidates: Person[] = [];
-      if (rs) {
-        if (rs.partner) candidates.push(rs.partner);
-        if (rs.fiance) candidates.push(rs.fiance);
-        if (rs.spouse) candidates.push(rs.spouse);
-        candidates.push(...rs.family, ...rs.friends, ...rs.significantExes, ...rs.casualExes);
+      let found: Person | undefined;
+      if (slot && rs) {
+        found = rs[slot] ?? undefined;
+        if (!found) return null;
+      } else {
+        const targetId =
+          (payload.targetId as string | undefined) ??
+          (payload.id as string | undefined);
+        if (!targetId) return null;
+        const matches = (p: Person) => p.id === targetId || p.baseId === targetId;
+        const candidates: Person[] = [];
+        if (rs) {
+          if (rs.partner) candidates.push(rs.partner);
+          if (rs.fiance) candidates.push(rs.fiance);
+          if (rs.spouse) candidates.push(rs.spouse);
+          candidates.push(...rs.family, ...rs.friends, ...rs.significantExes, ...rs.casualExes);
+        }
+        found = candidates.find(matches);
       }
-      const found = candidates.find(matches);
       const name = found
         ? `${found.firstName} ${found.lastName}`.trim() || 'them'
         : 'them';
