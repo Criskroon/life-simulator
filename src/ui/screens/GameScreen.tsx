@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../../game/state/gameStore';
 import { ActivitiesMenuV2 } from '../components/activities/ActivitiesMenuV2';
+import type { SectionKey } from '../components/activities/sections';
+import { TheBodyScreen } from '../components/activities/TheBodyScreen';
 import { BottomNav, type BottomNavTab } from '../components/BottomNav';
 import { EventModal } from '../components/EventModal';
 import { HeaderStrip } from '../components/HeaderStrip';
@@ -38,6 +40,10 @@ export function GameScreen() {
   const executeRelationshipAction = useGameStore((s) => s.executeRelationshipAction);
 
   const [activeTab, setActiveTab] = useState<BottomNavTab>('home');
+  // Modal-replace state for Section detail screens. When set, the
+  // detail surface renders in place of ActivitiesMenuV2; back returns
+  // to the menu, close exits the whole flow.
+  const [openSection, setOpenSection] = useState<SectionKey | null>(null);
 
   // Sync the nav back to 'home' when the activities menu is closed by any
   // path — modal close button, tab toggle, or an interrupt from the engine.
@@ -46,6 +52,14 @@ export function GameScreen() {
       setActiveTab('home');
     }
   }, [activitiesMenuOpen, activeTab]);
+
+  // Reset the Section detail any time the menu fully closes so the next
+  // open lands on the grid, not a leftover sub-screen.
+  useEffect(() => {
+    if (!activitiesMenuOpen && openSection !== null) {
+      setOpenSection(null);
+    }
+  }, [activitiesMenuOpen, openSection]);
 
   if (!player) return null;
 
@@ -185,8 +199,29 @@ export function GameScreen() {
         />
       )}
 
-      {showActivities && (
-        <ActivitiesMenuV2 player={player} onClose={closeActivitiesMenu} />
+      {showActivities && openSection === 'body' && (
+        <TheBodyScreen
+          player={player}
+          onBack={() => setOpenSection(null)}
+          onClose={() => {
+            setOpenSection(null);
+            closeActivitiesMenu();
+          }}
+        />
+      )}
+
+      {showActivities && openSection === null && (
+        <ActivitiesMenuV2
+          player={player}
+          onClose={closeActivitiesMenu}
+          onOpenSection={(key) => {
+            if (key === 'body') {
+              setOpenSection('body');
+              return true;
+            }
+            return false;
+          }}
+        />
       )}
 
       {showResolution && lastResolution && (

@@ -2,23 +2,32 @@ import { useEffect } from 'react';
 import type { PlayerState } from '../../../game/types/gameState';
 import { useComingSoon } from '../ComingSoonHandler';
 import { SectionCard } from './SectionCard';
-import { SECTIONS } from './sections';
+import { SECTIONS, type SectionKey } from './sections';
 
 interface ActivitiesMenuV2Props {
   player: PlayerState;
   onClose: () => void;
+  /**
+   * Optional handler invoked when a Section card is tapped. Returning
+   * `true` signals the parent owns navigation for that Section (modal-
+   * replace) and the menu should NOT fall through to the Coming-soon
+   * toast. Sections without a handler — or where the handler returns
+   * `false` — keep firing the toast as before.
+   */
+  onOpenSection?: (key: SectionKey) => boolean;
 }
 
 /**
  * Activities surface — the player's "what do you do this year" choice.
- * Eight Sections laid out 2 × 4. Each tap fires a Coming-soon toast for now
- * (engine wiring lives in later sessions); the grid itself is the lasting
- * navigation surface.
- *
- * TODO(engine): swap `useComingSoon` calls for navigation into per-Section
- * detail screens (e.g. `<TheBodyScreen />`) once those exist.
+ * Eight Sections laid out 2 × 4. Sections with a wired detail screen
+ * delegate to `onOpenSection` for navigation; the rest still fire a
+ * Coming-soon toast until their detail screens land.
  */
-export function ActivitiesMenuV2({ player, onClose }: ActivitiesMenuV2Props) {
+export function ActivitiesMenuV2({
+  player,
+  onClose,
+  onOpenSection,
+}: ActivitiesMenuV2Props) {
   const { showComingSoon } = useComingSoon();
   const remaining = player.actionsRemainingThisYear;
   const total = 3;
@@ -77,7 +86,10 @@ export function ActivitiesMenuV2({ player, onClose }: ActivitiesMenuV2Props) {
             <SectionCard
               key={section.key}
               section={section}
-              onClick={() => showComingSoon(section.name, section.toastDetail)}
+              onClick={() => {
+                if (onOpenSection?.(section.key)) return;
+                showComingSoon(section.name, section.toastDetail);
+              }}
             />
           ))}
         </div>
