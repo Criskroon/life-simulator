@@ -111,26 +111,6 @@ export const MOCK_INVESTMENTS: ReadonlyArray<InvestmentEntry> = [
 ];
 
 /**
- * Toast copy for each section's "+" pill. Each one sets the expectation
- * that the entry point lives behind the future Shop sub-flow rather
- * than promising a dedicated screen — keeps the pill honest.
- */
-export const PILL_TOASTS: Record<'property' | 'vehicles' | 'investments', { label: string; detail: string }> = {
-  property: {
-    label: 'Real Estate',
-    detail: 'Real Estate browser arrives with the Shop.',
-  },
-  vehicles: {
-    label: 'Auto Dealer',
-    detail: 'Auto Dealer arrives with the Shop.',
-  },
-  investments: {
-    label: 'Belongings',
-    detail: 'Belongings collector arrives with the Shop.',
-  },
-};
-
-/**
  * Synthesise a 9-year rising series ending at `currentTotal`. The engine
  * doesn't track historical net worth, so the chart needs *some* shape;
  * we want it to read as growth, not stagnation, so each prior year is a

@@ -1,6 +1,6 @@
 import { getCurrentCountry } from '../../../game/engine/countryEngine';
 import type { PlayerState } from '../../../game/types/gameState';
-import { useComingSoon } from '../ComingSoonHandler';
+import type { StoreId } from '../shop/shopData';
 import { AssetRow } from './AssetRow';
 import { AssetSectionHeader } from './AssetSectionHeader';
 import {
@@ -9,7 +9,6 @@ import {
   MOCK_PROPERTIES,
   MOCK_VEHICLES,
   NEIGHBOURHOOD_BY_COUNTRY,
-  PILL_TOASTS,
   synthesiseNetWorthHistory,
   type PropertyEntry,
   type VehicleEntry,
@@ -18,6 +17,12 @@ import { NetWorthCard } from './NetWorthCard';
 
 interface AssetsScreenProps {
   player: PlayerState;
+  /**
+   * Open the Shop sub-flow. The Auto Dealer pill deep-links straight to
+   * the Auto Dealer store; the other pills land on the Hub since their
+   * stores aren't wired this session.
+   */
+  onOpenShop: (initialStoreId: StoreId | null) => void;
 }
 
 /**
@@ -33,8 +38,7 @@ interface AssetsScreenProps {
  * mock arrays in `assetsData.ts` until the asset engine lands. All
  * "+" pills route through `useComingSoon` with section-specific copy.
  */
-export function AssetsScreen({ player }: AssetsScreenProps) {
-  const { showComingSoon } = useComingSoon();
+export function AssetsScreen({ player, onOpenShop }: AssetsScreenProps) {
   const country = getCurrentCountry(player);
   const symbol = country.currency.symbol;
 
@@ -104,8 +108,7 @@ export function AssetsScreen({ player }: AssetsScreenProps) {
           }
           pill={{
             label: 'Real Estate',
-            onClick: () =>
-              showComingSoon(PILL_TOASTS.property.label, PILL_TOASTS.property.detail),
+            onClick: () => onOpenShop(null),
             testId: 'assets-pill-property',
           }}
           testId="assets-section-property"
@@ -138,8 +141,7 @@ export function AssetsScreen({ player }: AssetsScreenProps) {
           }
           pill={{
             label: 'Auto Dealer',
-            onClick: () =>
-              showComingSoon(PILL_TOASTS.vehicles.label, PILL_TOASTS.vehicles.detail),
+            onClick: () => onOpenShop('auto-dealer'),
             testId: 'assets-pill-vehicles',
           }}
           testId="assets-section-vehicles"
@@ -174,11 +176,7 @@ export function AssetsScreen({ player }: AssetsScreenProps) {
           }
           pill={{
             label: 'Belongings',
-            onClick: () =>
-              showComingSoon(
-                PILL_TOASTS.investments.label,
-                PILL_TOASTS.investments.detail,
-              ),
+            onClick: () => onOpenShop(null),
             testId: 'assets-pill-investments',
           }}
           testId="assets-section-investments"

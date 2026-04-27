@@ -20,6 +20,8 @@ import { InsufficientFundsModal } from '../components/InsufficientFundsModal';
 import { PeopleScreenWithPets } from '../components/PeopleScreenWithPets';
 import { RelationshipProfileModal } from '../components/RelationshipProfileModal';
 import { ResolutionModal } from '../components/ResolutionModal';
+import { ShopRoute } from '../components/shop/ShopRoute';
+import type { StoreId } from '../components/shop/shopData';
 import { SidePanel } from '../components/SidePanel';
 import { StatBar } from '../components/StatBar';
 import { TopBar } from '../components/TopBar';
@@ -69,6 +71,12 @@ export function GameScreen() {
   // detail surface renders in place of ActivitiesMenuV2; back returns
   // to the menu, close exits the whole flow.
   const [openSection, setOpenSection] = useState<SectionKey | null>(null);
+  // Shop sub-flow — when not null, ShopRoute renders as a z-50 modal on
+  // top of whatever else is showing (Activities Menu, Assets tab, etc.).
+  // `initialStoreId` lets Assets pills deep-link straight to a store.
+  const [shopRoute, setShopRoute] = useState<{
+    initialStoreId: StoreId | null;
+  } | null>(null);
 
   // Sync the nav back to 'home' when the activities menu is closed by any
   // path — modal close button, tab toggle, or an interrupt from the engine.
@@ -176,7 +184,14 @@ export function GameScreen() {
               <PeopleScreenWithPets player={player} onSelectPerson={openProfile} />
             )}
             {activeTab === 'career' && <CareerScreen player={player} />}
-            {activeTab === 'assets' && <AssetsScreen player={player} />}
+            {activeTab === 'assets' && (
+              <AssetsScreen
+                player={player}
+                onOpenShop={(initialStoreId) =>
+                  setShopRoute({ initialStoreId })
+                }
+              />
+            )}
           </>
         ) : (
           <>
@@ -250,12 +265,24 @@ export function GameScreen() {
           player={player}
           onClose={closeActivitiesMenu}
           onOpenSection={(key) => {
+            if (key === 'shop') {
+              setShopRoute({ initialStoreId: null });
+              return true;
+            }
             if (SECTION_ACTIVITIES[key]) {
               setOpenSection(key);
               return true;
             }
             return false;
           }}
+        />
+      )}
+
+      {shopRoute && (
+        <ShopRoute
+          player={player}
+          initialStoreId={shopRoute.initialStoreId}
+          onClose={() => setShopRoute(null)}
         />
       )}
 
