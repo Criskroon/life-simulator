@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ComingSoonProvider } from '../components/ComingSoonHandler';
 
 interface AppShellProps {
   children: ReactNode;
@@ -6,8 +7,10 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
-      {children}
-    </div>
+    <ComingSoonProvider>
+      <div className="min-h-screen bg-slate-100 text-slate-900">
+        {children}
+      </div>
+    </ComingSoonProvider>
   );
 }
