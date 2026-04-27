@@ -15,6 +15,15 @@ import type {
   ActionDisabledReason,
   AvailableAction,
 } from '../../game/types/interactions';
+import { HumanAvatar } from './people/HumanAvatar';
+import { RelationshipBondMeter } from './people/RelationshipBondMeter';
+import {
+  ACCENT_CLASS_FOR_FLAVOR,
+  eyebrowLabelOf,
+  flavorOf,
+  isBigTicketAction,
+  readVignette,
+} from './people/types';
 
 interface RelationshipProfileModalProps {
   player: PlayerState;
@@ -23,19 +32,6 @@ interface RelationshipProfileModalProps {
   onAction: (actionId: string) => void;
   onClose: () => void;
 }
-
-const TYPE_LABELS: Record<RelationshipType, string> = {
-  partner: 'Partner',
-  fiance: 'Fiancé(e)',
-  spouse: 'Spouse',
-  father: 'Father',
-  mother: 'Mother',
-  sibling: 'Sibling',
-  child: 'Child',
-  friend: 'Friend',
-  significantEx: 'Significant ex',
-  casualEx: 'Casual ex',
-};
 
 const DISABLED_LABELS: Record<ActionDisabledReason, string> = {
   insufficient_actions: 'No actions left this year',
@@ -54,7 +50,7 @@ const FORMER_SLOT_LABELS: Record<'partner' | 'fiance' | 'spouse', string> = {
 /**
  * Per-type extra metadata shown next to age in the profile header. Pure
  * derivation — exported so unit tests can pin the strings without standing
- * up the React tree.
+ * up the React tree. Logic preserved verbatim from the pre-1.5b version.
  */
 export function getRelationshipMetaLabel(
   target: Person,
@@ -92,13 +88,13 @@ export function getRelationshipMetaLabel(
 }
 
 /**
- * Fullscreen profile for one Person. Mirrors the EventModal/ActivitiesMenu
- * layout so the three player-facing surfaces feel like the same family.
+ * Fullscreen profile for one Person. Re-skinned in 1.5b to match
+ * PetProfileModal's Sunny Side vocabulary: cream sheet, gradient avatar
+ * ring, bond hero with type-aware tier meter, accent-square action rows.
  *
- * The action list is status-aware: filtered by `applicableTo` upstream and
- * annotated with enabled/disabled reasons by the engine. Disabled actions
- * stay clickable-looking but inert with a reason label, matching the
- * disabled pattern from the activities menu.
+ * Engine wiring is unchanged from the pre-1.5b version: `getActionsFor`
+ * + `getChoicePreview` + the `enabled`/`disabledReason` semantics, plus
+ * the exported `getRelationshipMetaLabel` helper, all preserved verbatim.
  */
 export function RelationshipProfileModal({
   player,
@@ -117,8 +113,10 @@ export function RelationshipProfileModal({
 
   const actions = getActionsFor(target, targetType, player);
   const fullName = `${target.firstName} ${target.lastName}`.trim() || 'Unknown';
-  const typeLabel = TYPE_LABELS[targetType];
+  const eyebrow = eyebrowLabelOf(target, targetType);
   const metaLabel = getRelationshipMetaLabel(target, targetType, player.currentYear);
+  const flavor = flavorOf(targetType);
+  const vignette = readVignette(target);
 
   return (
     <div
@@ -126,59 +124,102 @@ export function RelationshipProfileModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="relationship-profile-title"
+      data-testid="relationship-profile-modal"
     >
-      <div className="w-full max-w-phone bg-white rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
-        <div className="px-5 pt-5 pb-3 border-b border-slate-100">
-          <div className="text-xs uppercase tracking-wider text-slate-400 mb-1">
-            {typeLabel}
+      <div className="w-full max-w-phone bg-cream-light rounded-2xl shadow-2xl flex flex-col max-h-[88vh] overflow-hidden">
+        {/* Header */}
+        <div className="px-5 pt-4 pb-3 flex items-center gap-[14px]">
+          <HumanAvatar
+            firstName={target.firstName}
+            lastName={target.lastName}
+            size={72}
+            ringed
+          />
+          <div className="flex-1 min-w-0">
+            <div className="font-mono text-[11px] font-extrabold uppercase tracking-[0.1em] text-ink-soft mb-[2px]">
+              <RenderEyebrow label={eyebrow} />
+            </div>
+            <h3
+              id="relationship-profile-title"
+              className="font-display font-bold text-[24px] leading-[1.05] tracking-[-0.02em] text-ink truncate"
+            >
+              {fullName}
+            </h3>
+            <div className="font-mono text-[11px] font-bold uppercase tracking-[0.06em] text-ink-soft mt-1 truncate">
+              Age {target.age}
+              {metaLabel && ` · ${metaLabel}`}
+              {!target.alive && ' · Deceased'}
+            </div>
           </div>
-          <h3
-            id="relationship-profile-title"
-            className="text-xl font-semibold text-slate-900"
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            data-testid="relationship-profile-close"
+            className="bg-transparent border-none p-[6px] cursor-pointer text-ink-faint hover:text-ink transition"
           >
-            {fullName}
-          </h3>
-          <div className="text-sm text-slate-500 mt-1">
-            Age {target.age}
-            {metaLabel && ` · ${metaLabel}`}
-            {!target.alive && ' · Deceased'}
+            <CloseGlyph />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex flex-col">
+          {/* Bond hero */}
+          <div className="px-5 pb-[14px]">
+            <Card>
+              <div className="flex justify-between items-baseline">
+                <Eyebrow>Bond</Eyebrow>
+                <span
+                  className="font-display font-extrabold text-[28px] text-ink leading-none tabular-nums tracking-[-0.02em]"
+                  data-testid="relationship-bond-value"
+                >
+                  {target.relationshipLevel}
+                </span>
+              </div>
+              <div className="mt-2">
+                <RelationshipBondMeter
+                  value={target.relationshipLevel}
+                  type={targetType}
+                />
+              </div>
+              {vignette && (
+                <div className="mt-[10px] text-[12px] text-ink-soft leading-[1.45] italic">
+                  &ldquo;{vignette}&rdquo;
+                </div>
+              )}
+            </Card>
           </div>
-          <div className="mt-3">
-            <div className="flex items-baseline justify-between mb-1">
-              <span className="text-xs uppercase tracking-wider text-slate-400">
-                Bond
+
+          {/* Actions */}
+          <div className="px-5 pb-[14px]">
+            <div className="flex items-baseline gap-2 mb-2 px-1">
+              <span className="font-display text-[16px] font-bold text-ink tracking-[-0.015em]">
+                With {target.firstName}
               </span>
-              <span className="text-xs text-slate-500 font-semibold">
-                {target.relationshipLevel}/100
+              <span className="font-mono text-[10px] text-ink-faint font-medium tracking-[0.04em]">
+                this year
               </span>
             </div>
-            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-rose-400 rounded-full transition-all"
-                style={{ width: `${Math.max(0, Math.min(100, target.relationshipLevel))}%` }}
-              />
-            </div>
+            {actions.length === 0 ? (
+              <div className="bg-cream-light border border-cream-dark border-dashed rounded-2xl px-3 py-3 text-[12px] text-ink-faint italic text-center">
+                More actions coming soon.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-[6px]">
+                {actions.map((entry) => (
+                  <ActionRow
+                    key={entry.action.id}
+                    entry={entry}
+                    player={player}
+                    flavor={flavor}
+                    onPick={onAction}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="px-5 py-4 overflow-y-auto flex flex-col gap-2">
-          {actions.length === 0 ? (
-            <div className="text-sm text-slate-500 italic text-center py-4">
-              More actions coming soon.
-            </div>
-          ) : (
-            actions.map((entry) => (
-              <ActionRow
-                key={entry.action.id}
-                entry={entry}
-                player={player}
-                onPick={onAction}
-              />
-            ))
-          )}
-        </div>
-
-        <div className="px-5 pb-5 pt-2 border-t border-slate-100">
+        <div className="px-5 pb-5 pt-2 border-t border-cream-dark">
           <button
             type="button"
             onClick={onClose}
@@ -192,63 +233,166 @@ export function RelationshipProfileModal({
   );
 }
 
+/**
+ * Splits the trailing heart on romantic eyebrows so the symbol can be
+ * tinted with `text-section-heart` while the rest of the label stays
+ * `text-ink-soft`. Pure presentation — no logic depends on this split.
+ */
+function RenderEyebrow({ label }: { label: string }) {
+  if (label.endsWith('♡')) {
+    const head = label.slice(0, -1).trimEnd();
+    return (
+      <span>
+        {head}
+        <span className="text-section-heart ml-[2px]">♡</span>
+      </span>
+    );
+  }
+  return <span>{label}</span>;
+}
+
 interface ActionRowProps {
   entry: AvailableAction;
   player: PlayerState;
+  flavor: ReturnType<typeof flavorOf>;
   onPick: (actionId: string) => void;
 }
 
-function ActionRow({ entry, player, onPick }: ActionRowProps) {
+function ActionRow({ entry, player, flavor, onPick }: ActionRowProps) {
   const { action, enabled, disabledReason } = entry;
   const preview = getChoicePreview(
     { label: action.label, cost: action.cost },
     player,
   );
-  const negative = preview.adjustedCost !== null && preview.adjustedCost < 0;
-  const positive = preview.adjustedCost !== null && preview.adjustedCost > 0;
   const apCost =
     action.tier === 'big' ? (action.actionCost ?? 1) : (action.actionCost ?? 0);
+
+  const accentClass = !enabled
+    ? 'bg-cream-dark'
+    : isBigTicketAction(action)
+      ? 'bg-coral'
+      : ACCENT_CLASS_FOR_FLAVOR[flavor];
+
+  // costLabel comes from getChoicePreview — already country-adjusted and
+  // formatted (e.g. "−€194", "+€2,000"). We only re-color it to match
+  // the Sunny Side tone (coral for spends, success for gains).
+  const costLabel = preview.costLabel;
+  const costPositive =
+    preview.adjustedCost !== null && preview.adjustedCost > 0;
 
   return (
     <button
       type="button"
       onClick={() => enabled && onPick(action.id)}
       disabled={!enabled}
-      className="text-left bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed text-slate-900 rounded-xl px-4 py-3 transition active:scale-[0.99] flex flex-col gap-1"
+      data-testid={`relationship-action-${action.id}`}
+      className="text-left w-full bg-cream border border-cream-dark rounded-[14px] px-3 py-[10px] flex items-center gap-[10px] shadow-[0_2px_0_rgba(0,0,0,0.03)] disabled:opacity-55 disabled:cursor-not-allowed enabled:hover:bg-peach-light/40 enabled:active:scale-[0.99] transition"
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="font-medium">{action.label}</span>
-        <span className="text-xs text-slate-500 whitespace-nowrap">
-          {action.tier === 'big'
-            ? `${apCost} action${apCost === 1 ? '' : 's'}`
-            : 'Free'}
-        </span>
+      <span
+        aria-hidden="true"
+        className={`w-8 h-8 rounded-[10px] border border-ink shrink-0 ${accentClass}`}
+        style={{ boxShadow: '0 1.5px 0 rgba(0,0,0,0.08)' }}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="font-bold text-[13px] text-ink tracking-[-0.01em] truncate">
+          {action.label}
+        </div>
+        <div className="text-[11px] text-ink-soft mt-[1px] leading-[1.3]">
+          {!enabled && disabledReason
+            ? DISABLED_LABELS[disabledReason]
+            : (action.description ?? '\u00A0')}
+        </div>
       </div>
-      {action.description && (
-        <p className="text-xs text-slate-500">{action.description}</p>
-      )}
-      <div className="flex items-center justify-between gap-3 mt-0.5">
-        {preview.costLabel ? (
+      <div className="flex flex-col items-end gap-[3px] shrink-0">
+        {costLabel && (
+          // If `text-success` isn't generated by Tailwind, swap to
+          // `text-emerald-600` (the pre-1.5b value). See HANDOFF.md
+          // “Verify on integration”.
           <span
-            className={`text-xs font-semibold ${
-              negative
-                ? 'text-slate-600'
-                : positive
-                  ? 'text-emerald-600'
-                  : 'text-slate-600'
+            className={`font-mono text-[11px] font-bold tabular-nums ${
+              costPositive ? 'text-success' : 'text-coral'
             }`}
           >
-            {preview.costLabel}
-          </span>
-        ) : (
-          <span />
-        )}
-        {!enabled && disabledReason && (
-          <span className="text-xs text-rose-500 font-semibold">
-            {DISABLED_LABELS[disabledReason]}
+            {costLabel}
           </span>
         )}
+        <ApCostIndicator cost={apCost} tier={action.tier} />
       </div>
     </button>
+  );
+}
+
+/**
+ * AP cost indicator. Visually distinguishes the three tiers we care about:
+ *   - light + 0 AP → single hollow ring ("Free")
+ *   - big + N AP   → N filled coral dots
+ *   - light + N AP → N filled coral dots (rare; engine treats as big-ish)
+ *
+ * The hollow-vs-filled distinction lets a player skim a list and tell at
+ * a glance which actions cost from their yearly action budget.
+ */
+function ApCostIndicator({
+  cost,
+  tier,
+}: {
+  cost: number;
+  tier: 'big' | 'light';
+}) {
+  if (cost === 0 && tier === 'light') {
+    return (
+      <span
+        aria-label="Free"
+        className="w-[7px] h-[7px] rounded-full border border-coral inline-block"
+      />
+    );
+  }
+  return (
+    <span
+      aria-label={`${cost} action${cost === 1 ? '' : 's'}`}
+      className="flex gap-[2px]"
+    >
+      {Array.from({ length: Math.max(1, cost) }).map((_, i) => (
+        <span
+          key={i}
+          className="w-[7px] h-[7px] rounded-full bg-coral inline-block"
+        />
+      ))}
+    </span>
+  );
+}
+
+/* ── Local primitives ─────────────────────────────────────────────────────
+ * Duplicated verbatim from `PetProfileModal.tsx` rather than extracted to
+ * a shared `profile/` module — keeps the 1.5b diff inside the allowed
+ * file boundaries (only `src/ui/components/` and `src/ui/components/people/`).
+ * Promote to `src/ui/components/profile/primitives.tsx` in a follow-up
+ * cleanup session. See HANDOFF.md "Follow-ups". */
+
+function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-cream border border-cream-dark rounded-[18px] px-[14px] py-3 shadow-[0_3px_0_rgba(0,0,0,0.04)]">
+      {children}
+    </div>
+  );
+}
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="font-mono text-[11px] font-extrabold uppercase tracking-[0.1em] text-ink-soft">
+      {children}
+    </span>
+  );
+}
+
+function CloseGlyph() {
+  return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6 6 L18 18 M18 6 L6 18"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
