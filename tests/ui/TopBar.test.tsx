@@ -23,67 +23,96 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 }
 
 describe('TopBar', () => {
-  it('does not render the back button when on Home', () => {
-    const { queryByTestId } = render(
-      <TopBar player={makePlayer()} showBack={false} onBack={vi.fn()} />,
-    );
+  it('does not render a back button (BackButton was retired in 1.1d)', () => {
+    const { queryByTestId } = render(<TopBar player={makePlayer()} />);
     expect(queryByTestId('top-bar-back-button')).toBeNull();
   });
 
-  it('renders the back button when not on Home', () => {
-    const { getByTestId } = render(
-      <TopBar player={makePlayer()} showBack={true} onBack={vi.fn()} />,
-    );
-    expect(getByTestId('top-bar-back-button')).not.toBeNull();
-  });
-
   it('does not render the legacy "tap to return" hint', () => {
-    const { container, queryByTestId } = render(
-      <TopBar player={makePlayer()} showBack={true} onBack={vi.fn()} />,
-    );
+    const { container, queryByTestId } = render(<TopBar player={makePlayer()} />);
     expect(queryByTestId('top-bar-return-hint')).toBeNull();
     expect(container.textContent ?? '').not.toMatch(/tap here to return/i);
   });
 
-  it('fires onBack when the back button is clicked', () => {
-    const onBack = vi.fn();
-    const { getByTestId } = render(
-      <TopBar player={makePlayer()} showBack={true} onBack={onBack} />,
-    );
-    fireEvent.click(getByTestId('top-bar-back-button'));
-    expect(onBack).toHaveBeenCalledTimes(1);
-  });
-
   it('fires onProfilePress when the header card is clicked', () => {
-    const onBack = vi.fn();
     const onProfilePress = vi.fn();
     const { getByTestId } = render(
-      <TopBar
-        player={makePlayer()}
-        showBack={false}
-        onBack={onBack}
-        onProfilePress={onProfilePress}
-      />,
+      <TopBar player={makePlayer()} onProfilePress={onProfilePress} />,
     );
     fireEvent.click(getByTestId('top-bar-profile-trigger'));
     expect(onProfilePress).toHaveBeenCalledTimes(1);
-    expect(onBack).not.toHaveBeenCalled();
   });
 
   it('logs a placeholder when no onProfilePress handler is provided', () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const { getByTestId } = render(
-      <TopBar player={makePlayer()} showBack={false} onBack={vi.fn()} />,
-    );
+    const { getByTestId } = render(<TopBar player={makePlayer()} />);
     fireEvent.click(getByTestId('top-bar-profile-trigger'));
     expect(log).toHaveBeenCalledWith('Profile menu coming soon');
     log.mockRestore();
   });
 
   it('renders the profile chevron indicator', () => {
-    const { getByTestId } = render(
-      <TopBar player={makePlayer()} showBack={false} onBack={vi.fn()} />,
-    );
+    const { getByTestId } = render(<TopBar player={makePlayer()} />);
     expect(getByTestId('top-bar-profile-chevron')).not.toBeNull();
+  });
+
+  it('uses the largest font size for short names', () => {
+    const { getByTestId } = render(
+      <TopBar player={makePlayer({ firstName: 'Eli', lastName: 'Park' })} />,
+    );
+    const name = getByTestId('top-bar-player-name');
+    expect(name.className).toContain('text-[28px]');
+  });
+
+  it('shrinks the name font when it exceeds 18 chars', () => {
+    const { getByTestId } = render(
+      <TopBar
+        player={makePlayer({ firstName: 'Daphne', lastName: 'van den Hoek' })}
+      />,
+    );
+    const name = getByTestId('top-bar-player-name');
+    expect(name.className).toContain('text-2xl');
+  });
+
+  it('shrinks the name font further when it exceeds 25 chars', () => {
+    const { getByTestId } = render(
+      <TopBar
+        player={makePlayer({
+          firstName: 'Maximilianus',
+          lastName: 'van den Hoekstra-Smeets',
+        })}
+      />,
+    );
+    const name = getByTestId('top-bar-player-name');
+    expect(name.className).toContain('text-xl');
+  });
+
+  it('clamps the name container to two lines via line-clamp', () => {
+    const { getByTestId } = render(
+      <TopBar
+        player={makePlayer({
+          firstName: 'Maximilianus',
+          lastName: 'van den Hoekstra-Smeets',
+        })}
+      />,
+    );
+    const name = getByTestId('top-bar-player-name');
+    expect((name as HTMLElement).style.webkitLineClamp).toBe('2');
+  });
+
+  it('uses the larger NET WORTH font for short amounts', () => {
+    const { getByTestId } = render(
+      <TopBar player={makePlayer({ money: 0 })} />,
+    );
+    const worth = getByTestId('top-bar-net-worth');
+    expect(worth.className).toContain('text-2xl');
+  });
+
+  it('shrinks the NET WORTH font when the formatted amount exceeds 8 chars', () => {
+    const { getByTestId } = render(
+      <TopBar player={makePlayer({ money: 1234567 })} />,
+    );
+    const worth = getByTestId('top-bar-net-worth');
+    expect(worth.className).toContain('text-xl');
   });
 });

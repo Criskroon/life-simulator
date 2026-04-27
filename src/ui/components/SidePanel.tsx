@@ -12,6 +12,43 @@ import type {
 } from '../../game/types/gameState';
 import { LifeHistory } from './LifeHistory';
 
+const FAMILY_TIERS: Array<{ min: number; max: number; label: string }> = [
+  { min: 0, max: 19, label: 'Distant' },
+  { min: 20, max: 39, label: 'Companion' },
+  { min: 40, max: 59, label: 'Bonded' },
+  { min: 60, max: 79, label: 'Devoted' },
+  { min: 80, max: 100, label: 'Inseparable' },
+];
+
+export function familyClosenessTier(level: number): string {
+  const clamped = Math.max(0, Math.min(100, level));
+  return FAMILY_TIERS.find((t) => clamped >= t.min && clamped <= t.max)!.label;
+}
+
+function ChevronRight() {
+  return (
+    <span
+      data-testid="row-chevron"
+      aria-hidden="true"
+      className="font-sans text-base text-ink-faint leading-none shrink-0"
+    >
+      ›
+    </span>
+  );
+}
+
+function BondBar({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(100, value));
+  return (
+    <div className="h-1 w-full rounded-full bg-cream-dark overflow-hidden mt-1">
+      <div
+        className="h-full bg-section-heart"
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
 type SidePanelView = 'history' | 'relationships';
 
 type SelectHandler = (person: Person, type: RelationshipType) => void;
@@ -168,9 +205,11 @@ function Collapsible({ title, children }: { title: string; children: React.React
  */
 function ClickableRow({
   onClick,
+  showChevron = false,
   children,
 }: {
   onClick?: () => void;
+  showChevron?: boolean;
   children: React.ReactNode;
 }) {
   if (!onClick) {
@@ -183,9 +222,10 @@ function ClickableRow({
       <button
         type="button"
         onClick={onClick}
-        className="w-full text-left rounded-lg px-1 py-0.5 -mx-1 hover:bg-cream-dark/40 transition cursor-pointer"
+        className="w-full text-left rounded-lg px-1 py-0.5 -mx-1 hover:bg-cream-dark/40 transition cursor-pointer flex items-center gap-2"
       >
-        {children}
+        <div className="flex-1 min-w-0">{children}</div>
+        {showChevron && <ChevronRight />}
       </button>
     </li>
   );
@@ -223,16 +263,24 @@ function FamilyRow({
   member: FamilyMember;
   onSelect?: SelectHandler;
 }) {
+  const tier = familyClosenessTier(member.relationshipLevel);
   return (
-    <ClickableRow onClick={onSelect ? () => onSelect(member, member.type) : undefined}>
+    <ClickableRow
+      onClick={onSelect ? () => onSelect(member, member.type) : undefined}
+      showChevron={Boolean(onSelect)}
+    >
       <div className="font-medium capitalize text-ink">{member.type}</div>
       <div className="text-ink-soft">
         {member.firstName} {member.lastName} — age {member.age}
         {!member.alive && ' (deceased)'}
       </div>
-      <div className="font-mono text-[11px] text-ink-faint">
-        Closeness: {member.relationshipLevel}/100
+      <div
+        data-testid={`family-tier-${member.id}`}
+        className="font-mono text-[11px] uppercase tracking-[0.05em] text-ink-faint"
+      >
+        {tier}
       </div>
+      <BondBar value={member.relationshipLevel} />
     </ClickableRow>
   );
 }

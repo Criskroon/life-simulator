@@ -3,12 +3,19 @@ import { useGameStore } from '../../game/state/gameStore';
 import { ActivitiesMenu } from '../components/ActivitiesMenu';
 import { BottomNav, type BottomNavTab } from '../components/BottomNav';
 import { EventModal } from '../components/EventModal';
+import { HeaderStrip } from '../components/HeaderStrip';
 import { InsufficientFundsModal } from '../components/InsufficientFundsModal';
 import { RelationshipProfileModal } from '../components/RelationshipProfileModal';
 import { ResolutionModal } from '../components/ResolutionModal';
 import { SidePanel } from '../components/SidePanel';
 import { StatBar } from '../components/StatBar';
 import { TopBar } from '../components/TopBar';
+
+const TAB_TITLES: Record<Exclude<BottomNavTab, 'home' | 'activities'>, string> = {
+  career: 'CAREER',
+  assets: 'ASSETS',
+  people: 'PEOPLE',
+};
 
 export function GameScreen() {
   const player = useGameStore((s) => s.player);
@@ -106,17 +113,27 @@ export function GameScreen() {
     setActiveTab('home');
   };
 
+  const isHeaderTab =
+    activeTab === 'career' || activeTab === 'assets' || activeTab === 'people';
+
   return (
     <div className="min-h-screen bg-cream flex justify-center p-4 pb-32">
       <div className="w-full max-w-phone">
-        <TopBar
-          player={player}
-          showBack={activeTab !== 'home'}
-          onBack={returnHome}
-        />
-
-        {activeTab === 'home' && (
+        {isHeaderTab ? (
           <>
+            <HeaderStrip
+              title={TAB_TITLES[activeTab as Exclude<BottomNavTab, 'home' | 'activities'>]}
+              onClose={returnHome}
+            />
+            {activeTab === 'people' && (
+              <SidePanel player={player} view="relationships" onSelect={openProfile} />
+            )}
+            {activeTab === 'career' && <TabPlaceholder title="Career" comingIn="1.2" />}
+            {activeTab === 'assets' && <TabPlaceholder title="Assets" comingIn="1.3" />}
+          </>
+        ) : (
+          <>
+            <TopBar player={player} />
             <div className="bg-cream-light border border-cream-dark rounded-2xl shadow-warm p-4 mb-4 space-y-2">
               <StatBar label="Health" value={player.stats.health} stat="health" />
               <StatBar
@@ -131,14 +148,6 @@ export function GameScreen() {
             <SidePanel player={player} view="history" onSelect={openProfile} />
           </>
         )}
-
-        {activeTab === 'people' && (
-          <SidePanel player={player} view="relationships" onSelect={openProfile} />
-        )}
-
-        {activeTab === 'career' && <TabPlaceholder title="Career" comingIn="1.2" />}
-
-        {activeTab === 'assets' && <TabPlaceholder title="Assets" comingIn="1.3" />}
       </div>
 
       <BottomNav

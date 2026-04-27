@@ -4,7 +4,7 @@ interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'width' | 'height'> {
   size?: number;
 }
 
-export function BackArrowIcon({ size = 18, ...props }: IconProps) {
+export function CloseIcon({ size = 18, ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -17,8 +17,8 @@ export function BackArrowIcon({ size = 18, ...props }: IconProps) {
       strokeLinejoin="round"
       {...props}
     >
-      <path d="M15.1 4.6 L6.3 12.05 L15.05 19.45" />
-      <path d="M6.4 11.95 L15.4 11.95" />
+      <path d="M5.6 5.4 L18.5 18.55" />
+      <path d="M18.4 5.5 L5.45 18.55" />
     </svg>
   );
 }
