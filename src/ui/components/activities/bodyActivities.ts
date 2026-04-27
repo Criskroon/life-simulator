@@ -2,31 +2,11 @@
  * The Body — static activity list shown when a player taps the Body
  * Section card. Pure data; engine wiring lands in a later session, so
  * each row currently routes through ComingSoonHandler.
- *
- * `tier`:
- *   - `light` → sage accent square, AP cost shown as filled coral dots
- *     (or a single hollow coral ring when free).
- *   - `big`   → coral accent square, signals a permanent / expensive
- *     commitment. Always carries an AP cost.
- *
- * `money` is base USD. `TheBodyScreen` passes it through `adjustPrice`
- * with the player's current country so the figure feels local.
  */
 
-export type BodyActivityTier = 'light' | 'big';
+import type { ActivitySpec } from './activitySpec';
 
-export interface BodyActivitySpec {
-  id: string;
-  label: string;
-  description: string;
-  /** Base USD cost. Omitted for free activities. */
-  money?: number;
-  /** Action-point cost. 0 = free; light tier rows show a hollow ring. */
-  apCost: number;
-  tier: BodyActivityTier;
-}
-
-export const BODY_ACTIVITIES: ReadonlyArray<BodyActivitySpec> = [
+export const BODY_ACTIVITIES: ReadonlyArray<ActivitySpec> = [
   {
     id: 'hit-the-gym',
     label: 'Hit the gym',

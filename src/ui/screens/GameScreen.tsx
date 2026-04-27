@@ -1,8 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../../game/state/gameStore';
 import { ActivitiesMenuV2 } from '../components/activities/ActivitiesMenuV2';
-import type { SectionKey } from '../components/activities/sections';
-import { TheBodyScreen } from '../components/activities/TheBodyScreen';
+import type { ActivitySpec } from '../components/activities/activitySpec';
+import { BODY_ACTIVITIES } from '../components/activities/bodyActivities';
+import { HEART_ACTIVITIES } from '../components/activities/heartActivities';
+import { MIND_ACTIVITIES } from '../components/activities/mindActivities';
+import { MIRROR_ACTIVITIES } from '../components/activities/mirrorActivities';
+import { SECTIONS, type SectionKey } from '../components/activities/sections';
+import { SectionDetailScreen } from '../components/activities/SectionDetailScreen';
+import { SHADOWS_ACTIVITIES } from '../components/activities/shadowsActivities';
+import { TOWN_ACTIVITIES } from '../components/activities/townActivities';
+import { WALLET_ACTIVITIES } from '../components/activities/walletActivities';
 import { BottomNav, type BottomNavTab } from '../components/BottomNav';
 import { EventModal } from '../components/EventModal';
 import { HeaderStrip } from '../components/HeaderStrip';
@@ -18,6 +26,21 @@ const TAB_TITLES: Record<Exclude<BottomNavTab, 'home' | 'activities'>, string> =
   career: 'CAREER',
   assets: 'ASSETS',
   people: 'PEOPLE',
+};
+
+/**
+ * Sections wired to a detail screen — every Section except The Shop,
+ * which has a sub-flow (stores) landing in a later session and stays on
+ * the Coming-soon toast until then.
+ */
+const SECTION_ACTIVITIES: Partial<Record<SectionKey, ReadonlyArray<ActivitySpec>>> = {
+  body: BODY_ACTIVITIES,
+  mind: MIND_ACTIVITIES,
+  town: TOWN_ACTIVITIES,
+  heart: HEART_ACTIVITIES,
+  wallet: WALLET_ACTIVITIES,
+  shadows: SHADOWS_ACTIVITIES,
+  mirror: MIRROR_ACTIVITIES,
 };
 
 export function GameScreen() {
@@ -60,6 +83,14 @@ export function GameScreen() {
       setOpenSection(null);
     }
   }, [activitiesMenuOpen, openSection]);
+
+  const openSectionData = useMemo(() => {
+    if (openSection === null) return null;
+    const section = SECTIONS.find((s) => s.key === openSection);
+    const activities = SECTION_ACTIVITIES[openSection];
+    if (!section || !activities) return null;
+    return { section, activities };
+  }, [openSection]);
 
   if (!player) return null;
 
@@ -199,8 +230,10 @@ export function GameScreen() {
         />
       )}
 
-      {showActivities && openSection === 'body' && (
-        <TheBodyScreen
+      {showActivities && openSection !== null && openSectionData && (
+        <SectionDetailScreen
+          section={openSectionData.section}
+          activities={openSectionData.activities}
           player={player}
           onBack={() => setOpenSection(null)}
           onClose={() => {
@@ -215,8 +248,8 @@ export function GameScreen() {
           player={player}
           onClose={closeActivitiesMenu}
           onOpenSection={(key) => {
-            if (key === 'body') {
-              setOpenSection('body');
+            if (SECTION_ACTIVITIES[key]) {
+              setOpenSection(key);
               return true;
             }
             return false;
