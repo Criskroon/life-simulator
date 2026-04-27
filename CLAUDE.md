@@ -13,16 +13,21 @@ careers, and systems on top without restructuring.
 ## Stack
 
 - React 18 + TypeScript (strict mode), Vite, Tailwind CSS, Zustand
-- Vitest for tests
+- Vitest for tests — engine suites run in `node`; UI tests under `tests/ui/`
+  run in `jsdom` via `environmentMatchGlobs` (see `vite.config.ts`). React
+  Testing Library is the harness for component tests.
 - No backend, no router (single-page state machine via Zustand `screen` field)
 - Persistence is async-wrapped `localStorage` so it can swap to Capacitor
   Preferences for the eventual mobile port
+- Visual design: Sunny Side system (see `docs/DESIGN_SYSTEM.md`). Tailwind
+  config carries the colour/font/shadow tokens; legacy stat hex aliases
+  (`#ef4444` etc.) are kept temporarily while older components migrate.
 
 ## Commands
 
 ```bash
 npm run dev          # → http://localhost:5180  (5173 is reserved by another project on this machine)
-npm test             # 325 tests across the engine — must stay green
+npm test             # 332 tests (325 engine + 7 UI) — must stay green
 npm run build        # tsc -b && vite build
 ```
 
@@ -57,10 +62,12 @@ src/game/engine/      # pure functions: ageUp, applyEffects, eventSelector, rng
 src/game/data/        # all content: events/, careers, names, countries
 src/game/types/       # PlayerState, GameEvent, Effect, Condition
 src/game/state/       # Zustand store + persistence
-src/ui/components/    # StatBar, TopBar, EventModal, SidePanel, …
+src/ui/components/    # StatBar, TopBar, EventModal, SidePanel, BottomNav, …
+src/ui/icons/nav/     # 5 nav icons (Career, Assets, AgeUp, People, Activities)
 src/ui/screens/       # NewLifeScreen, GameScreen, DeathScreen
 src/ui/layout/        # AppShell
-tests/engine/         # vitest unit + integration tests
+tests/engine/         # vitest unit + integration tests (node env)
+tests/ui/             # React Testing Library tests (jsdom env)
 ```
 
 ## Adding content

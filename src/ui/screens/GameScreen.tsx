@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import { useGameStore } from '../../game/state/gameStore';
 import { ActivitiesMenu } from '../components/ActivitiesMenu';
-import { AgeButton } from '../components/AgeButton';
+import { BottomNav, type BottomNavTab } from '../components/BottomNav';
 import { EventModal } from '../components/EventModal';
 import { InsufficientFundsModal } from '../components/InsufficientFundsModal';
 import { RelationshipProfileModal } from '../components/RelationshipProfileModal';
@@ -28,6 +29,16 @@ export function GameScreen() {
   const openProfile = useGameStore((s) => s.openProfile);
   const closeProfile = useGameStore((s) => s.closeProfile);
   const executeRelationshipAction = useGameStore((s) => s.executeRelationshipAction);
+
+  const [activeTab, setActiveTab] = useState<BottomNavTab>('home');
+
+  // Sync the nav back to 'home' when the activities menu is closed by any
+  // path — modal close button, tab toggle, or an interrupt from the engine.
+  useEffect(() => {
+    if (!activitiesMenuOpen && activeTab === 'activities') {
+      setActiveTab('home');
+    }
+  }, [activitiesMenuOpen, activeTab]);
 
   if (!player) return null;
 
@@ -66,43 +77,65 @@ export function GameScreen() {
     activitiesMenuOpen ||
     profileTarget !== null;
 
+  const handleTabChange = (tab: BottomNavTab) => {
+    // Tabs toggle: tapping the active tab returns to home. The Activities
+    // tab is special — it opens the existing modal flow and keeps the
+    // store as the source of truth for whether the menu is visible.
+    if (tab === 'activities') {
+      if (activeTab === 'activities') {
+        closeActivitiesMenu();
+        setActiveTab('home');
+      } else {
+        openActivitiesMenu();
+        setActiveTab('activities');
+      }
+      return;
+    }
+    if (activeTab === tab) {
+      setActiveTab('home');
+      return;
+    }
+    setActiveTab(tab);
+  };
+
   return (
     <div className="min-h-screen flex justify-center p-4 pb-32">
       <div className="w-full max-w-phone">
         <TopBar player={player} />
 
-        <div className="bg-white rounded-2xl shadow-md p-4 mb-4 space-y-2">
-          <StatBar label="Health" value={player.stats.health} color="#ef4444" />
-          <StatBar label="Happiness" value={player.stats.happiness} color="#facc15" />
-          <StatBar label="Smarts" value={player.stats.smarts} color="#3b82f6" />
-          <StatBar label="Looks" value={player.stats.looks} color="#ec4899" />
-        </div>
-
-        <SidePanel player={player} onSelect={openProfile} />
-
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-100 via-slate-100 z-30">
-          <div className="max-w-phone mx-auto flex gap-2">
-            <button
-              type="button"
-              onClick={openActivitiesMenu}
-              disabled={blockingModalUp}
-              className="relative flex-1 bg-white border border-slate-300 text-slate-900 font-semibold rounded-2xl py-4 text-base shadow active:scale-95 transition disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
-            >
-              Activities
-              <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-[1.5rem] h-6 rounded-full bg-slate-900 text-white text-xs font-semibold px-2">
-                {player.actionsRemainingThisYear}
-              </span>
-            </button>
-            <div className="flex-[2]">
-              <AgeButton
-                onClick={ageUpYear}
-                disabled={blockingModalUp}
-                label="Age +1"
+        {activeTab === 'home' && (
+          <>
+            <div className="bg-white rounded-2xl shadow-md p-4 mb-4 space-y-2">
+              <StatBar label="Health" value={player.stats.health} color="#ef4444" />
+              <StatBar
+                label="Happiness"
+                value={player.stats.happiness}
+                color="#facc15"
               />
+              <StatBar label="Smarts" value={player.stats.smarts} color="#3b82f6" />
+              <StatBar label="Looks" value={player.stats.looks} color="#ec4899" />
             </div>
-          </div>
-        </div>
+
+            <SidePanel player={player} onSelect={openProfile} />
+          </>
+        )}
+
+        {activeTab === 'people' && (
+          <SidePanel player={player} onSelect={openProfile} />
+        )}
+
+        {activeTab === 'career' && <TabPlaceholder title="Career" comingIn="1.2" />}
+
+        {activeTab === 'assets' && <TabPlaceholder title="Assets" comingIn="1.3" />}
       </div>
+
+      <BottomNav
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onAgeUp={ageUpYear}
+        ageUpDisabled={blockingModalUp}
+        badges={[{ tab: 'activities', count: player.actionsRemainingThisYear }]}
+      />
 
       {showEvent && currentEvent && (
         <EventModal
@@ -141,6 +174,25 @@ export function GameScreen() {
       {showResolution && lastResolution && (
         <ResolutionModal resolution={lastResolution} onClose={clearLastResolution} />
       )}
+    </div>
+  );
+}
+
+interface TabPlaceholderProps {
+  title: string;
+  comingIn: string;
+}
+
+function TabPlaceholder({ title, comingIn }: TabPlaceholderProps) {
+  return (
+    <div
+      data-testid={`tab-placeholder-${title.toLowerCase()}`}
+      className="bg-cream-light border border-cream-dark rounded-2xl shadow-warm p-8 text-center"
+    >
+      <div className="font-display text-2xl text-ink mb-2">{title}</div>
+      <div className="font-sans text-sm text-ink-soft">
+        {title} tab — coming in {comingIn}
+      </div>
     </div>
   );
 }
