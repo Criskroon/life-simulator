@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../../game/state/gameStore';
 import { ActivitiesMenuV2 } from '../components/activities/ActivitiesMenuV2';
 import type { ActivitySpec } from '../components/activities/activitySpec';
+import { AssetsScreen } from '../components/assets/AssetsScreen';
 import { BODY_ACTIVITIES } from '../components/activities/bodyActivities';
 import { CareerScreen } from '../components/career/CareerScreen';
 import { HEART_ACTIVITIES } from '../components/activities/heartActivities';
@@ -175,7 +176,7 @@ export function GameScreen() {
               <PeopleScreenWithPets player={player} onSelectPerson={openProfile} />
             )}
             {activeTab === 'career' && <CareerScreen player={player} />}
-            {activeTab === 'assets' && <TabPlaceholder title="Assets" comingIn="1.3" />}
+            {activeTab === 'assets' && <AssetsScreen player={player} />}
           </>
         ) : (
           <>
@@ -261,25 +262,6 @@ export function GameScreen() {
       {showResolution && lastResolution && (
         <ResolutionModal resolution={lastResolution} onClose={clearLastResolution} />
       )}
-    </div>
-  );
-}
-
-interface TabPlaceholderProps {
-  title: string;
-  comingIn: string;
-}
-
-function TabPlaceholder({ title, comingIn }: TabPlaceholderProps) {
-  return (
-    <div
-      data-testid={`tab-placeholder-${title.toLowerCase()}`}
-      className="bg-cream-light border border-cream-dark rounded-2xl shadow-warm p-8 text-center"
-    >
-      <div className="font-display text-2xl text-ink mb-2">{title}</div>
-      <div className="font-sans text-sm text-ink-soft">
-        {title} tab — coming in {comingIn}
-      </div>
     </div>
   );
 }
