@@ -14,8 +14,17 @@
 // CORE TYPES
 // =============================================================================
 
-/** ISO-2 country code. */
-export type CountryCode = 'NL' | 'US' | 'GB' | 'JP' | 'BR' | 'ZA';
+/** ISO-2 country codes — single source of truth for the union and runtime checks. */
+export const COUNTRY_CODES = ['NL', 'US', 'GB', 'JP', 'BR', 'ZA'] as const;
+export type CountryCode = (typeof COUNTRY_CODES)[number];
+
+/**
+ * Type guard for narrowing untyped strings (persisted state, URL params,
+ * JSON input) to CountryCode without an unchecked cast.
+ */
+export function isCountryCode(value: string): value is CountryCode {
+  return (COUNTRY_CODES as readonly string[]).includes(value);
+}
 
 export type Continent =
   | 'Europe'

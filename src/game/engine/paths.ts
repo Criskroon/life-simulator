@@ -8,6 +8,7 @@
  */
 
 import { getCountry } from '../data/countries';
+import { isCountryCode } from '../types/country';
 
 export function getAtPath(root: unknown, path: string): unknown {
   if (!path) return undefined;
@@ -24,7 +25,7 @@ export function getAtPath(root: unknown, path: string): unknown {
     typeof root === 'object'
   ) {
     const code = (root as Record<string, unknown>).country;
-    if (typeof code === 'string') {
+    if (typeof code === 'string' && isCountryCode(code)) {
       let current: unknown = getCountry(code);
       for (let i = 1; i < parts.length; i++) {
         if (current === null || current === undefined) return undefined;

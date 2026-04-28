@@ -12,13 +12,14 @@ import type {
   PlayerState,
   RelationshipState,
 } from '../types/gameState';
+import type { CountryCode } from '../types/country';
 import type { Rng } from '../engine/rng';
 
 export interface NewLifeOptions {
   firstName?: string;
   lastName?: string;
   gender?: Gender;
-  countryId?: string;
+  countryId?: CountryCode;
 }
 
 /**
@@ -139,6 +140,6 @@ function pickGender(rng: Rng): Gender {
   return 'nonbinary';
 }
 
-function pickCountry(rng: Rng): string {
+function pickCountry(rng: Rng): CountryCode {
   return (rng.pick(COUNTRIES)).code;
 }

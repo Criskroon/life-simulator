@@ -33,7 +33,7 @@ const baseState: PlayerState = {
 describe('generateNPCName', () => {
   it('returns a non-empty firstName and lastName for each country', () => {
     const rng = createRng(1);
-    for (const code of ['NL', 'US', 'GB']) {
+    for (const code of ['NL', 'US', 'GB'] as const) {
       const country = getCountry(code);
       const { firstName, lastName } = generateNPCName(country, 'female', rng);
       expect(firstName.length).toBeGreaterThan(0);
@@ -42,7 +42,7 @@ describe('generateNPCName', () => {
   });
 
   it('produces high diversity over 1000 calls per country', () => {
-    for (const code of ['NL', 'US', 'GB']) {
+    for (const code of ['NL', 'US', 'GB'] as const) {
       const country = getCountry(code);
       const rng = createRng(42 + code.charCodeAt(0));
       const fullNames = new Set<string>();
