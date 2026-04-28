@@ -28,7 +28,7 @@ export function FilterPills({ active, onSelect }: FilterPillsProps) {
             onClick={() => onSelect(filter.id)}
             data-testid={`auto-filter-${filter.id}`}
             data-active={isActive}
-            className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-[6px] font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] transition active:scale-[0.97] ${
+            className={`shrink-0 whitespace-nowrap rounded-full border px-2.5 py-[6px] font-mono text-[10px] font-bold uppercase tracking-[0.06em] transition active:scale-[0.97] ${
               isActive
                 ? 'border-ink bg-ink text-cream-light'
                 : 'border-cream-dark bg-cream text-ink-soft hover:bg-peach-light/40'
