@@ -53,11 +53,28 @@ export function EducationDetailModal({
 
   const availableStages =
     state.status === 'not_enrolled'
-      ? country.education.stages.filter(
-          (s) =>
-            s.isSelectable &&
-            canEnterStage(country, s.id, completedStageIds, player.stats.smarts),
-        )
+      ? country.education.stages.filter((s) => {
+          // Special case: basisschool / primary is normally non-selectable
+          // (auto-enrol at school-start age). But a young drop-out who
+          // never graduated it has *zero* selectable stages otherwise —
+          // every later stage requires it as a prerequisite. Surface
+          // basisschool here so the player can climb back on the ladder.
+          if (!s.isSelectable) {
+            if (s.id === 'basisschool') {
+              const alreadyGraduated = state.diplomas.some(
+                (d) => d.stageId === 'basisschool' && d.graduated,
+              );
+              return !alreadyGraduated;
+            }
+            return false;
+          }
+          return canEnterStage(
+            country,
+            s.id,
+            completedStageIds,
+            player.stats.smarts,
+          );
+        })
       : [];
 
   const handlePickStage = (stageId: string) => {
@@ -156,16 +173,21 @@ export function EducationDetailModal({
             <button
               type="button"
               data-testid="education-detail-dropout"
+              disabled={player.age < country.education.compulsoryUntilAge}
               onClick={() => {
                 dropOutOfSchool();
                 onClose();
               }}
-              className="mt-4 w-full rounded-[12px] border border-cream-dark bg-cream px-3 py-2 font-sans text-[13px] font-semibold text-danger transition active:scale-[0.99]"
+              className={`mt-4 w-full rounded-[12px] border border-cream-dark px-3 py-2 font-sans text-[13px] font-semibold transition ${
+                player.age < country.education.compulsoryUntilAge
+                  ? 'bg-cream/60 text-ink-soft cursor-not-allowed'
+                  : 'bg-cream text-danger active:scale-[0.99]'
+              }`}
             >
               Drop out
               {player.age < country.education.compulsoryUntilAge && (
                 <span className="block font-sans text-[11px] font-medium text-ink-soft mt-[2px]">
-                  ⚠ Compulsory until age {country.education.compulsoryUntilAge}
+                  You can't drop out until age {country.education.compulsoryUntilAge}
                 </span>
               )}
             </button>

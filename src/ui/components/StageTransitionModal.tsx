@@ -115,13 +115,18 @@ export function StageTransitionModal({ player }: StageTransitionModalProps) {
               <button
                 type="button"
                 data-testid="stage-transition-dropout"
+                disabled={player.age < country.education.compulsoryUntilAge}
                 onClick={dropOutOfSchool}
-                className="w-full rounded-[12px] border border-cream-dark bg-cream px-3 py-2 font-sans text-[13px] font-semibold text-danger transition active:scale-[0.99]"
+                className={`w-full rounded-[12px] border border-cream-dark px-3 py-2 font-sans text-[13px] font-semibold transition ${
+                  player.age < country.education.compulsoryUntilAge
+                    ? 'bg-cream/60 text-ink-soft cursor-not-allowed'
+                    : 'bg-cream text-danger active:scale-[0.99]'
+                }`}
               >
                 Stop education
                 {player.age < country.education.compulsoryUntilAge && (
                   <span className="block font-sans text-[11px] font-medium text-ink-soft mt-[2px]">
-                    ⚠ Compulsory until age {country.education.compulsoryUntilAge}
+                    You can't drop out until age {country.education.compulsoryUntilAge}
                   </span>
                 )}
               </button>

@@ -73,6 +73,19 @@ function notEnrolled(
   } as EducationState;
 }
 
+function enrolled(
+  overrides: Partial<EducationState> = {},
+): EducationState {
+  return {
+    status: 'enrolled',
+    currentStageId: 'havo',
+    yearOfStage: 2,
+    currentGpa: 7.0,
+    diplomas: [],
+    ...overrides,
+  } as EducationState;
+}
+
 describe('EducationDetailModal — re-enrol surface', () => {
   it('lists the stages a dropped-out player can re-enrol in', () => {
     // Smarts 80 + basisschool diploma → vmbo, havo, vwo all pass canEnterStage.
@@ -142,23 +155,74 @@ describe('EducationDetailModal — re-enrol surface', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the empty-state message when no stage passes canEnterStage', () => {
-    // smarts: 0 + zero diplomas → vmbo's minSmarts (30) fails AND every
-    // other stage's prereq chain breaks at basisschool. List is empty.
-    const player = makePlayer({
-      stats: { health: 70, happiness: 70, smarts: 0, looks: 50 },
-    });
+  it('surfaces basisschool to a young drop-out with no graduated diploma', () => {
+    // 8-year-old who dropped out before graduating basisschool. Without
+    // the basisschool exception this list would be empty (every other
+    // stage requires basisschool as a prerequisite) — that was the bug.
+    const player = makePlayer({ age: 8 });
     const state = notEnrolled({ diplomas: [] });
 
     const { getByTestId, queryByTestId } = render(
       <EducationDetailModal player={player} state={state} onClose={vi.fn()} />,
     );
 
-    expect(getByTestId('education-detail-no-paths')).not.toBeNull();
-    expect(getByTestId('education-detail-no-paths').textContent).toContain(
-      'No more education paths',
+    expect(getByTestId('education-detail-stage-basisschool')).not.toBeNull();
+    // No empty-state message — there IS a path forward now.
+    expect(queryByTestId('education-detail-no-paths')).toBeNull();
+  });
+
+  it('hides basisschool when the player already graduated it', () => {
+    const state = notEnrolled({ diplomas: [basisschoolDiploma()] });
+
+    const { queryByTestId } = render(
+      <EducationDetailModal
+        player={makePlayer()}
+        state={state}
+        onClose={vi.fn()}
+      />,
     );
-    expect(queryByTestId('education-detail-stage-vmbo')).toBeNull();
-    expect(queryByTestId('education-detail-stage-havo')).toBeNull();
+
+    expect(queryByTestId('education-detail-stage-basisschool')).toBeNull();
+  });
+});
+
+describe('EducationDetailModal — drop-out lock under compulsory age', () => {
+  it('disables the drop-out button below NL compulsoryUntilAge (18)', () => {
+    const player = makePlayer({ age: 8 });
+    const { getByTestId } = render(
+      <EducationDetailModal
+        player={player}
+        state={enrolled({ currentStageId: 'basisschool', yearOfStage: 4 })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const button = getByTestId('education-detail-dropout') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.textContent).toContain("You can't drop out until age 18");
+
+    // React swallows clicks on disabled buttons — verify the action stays put.
+    fireEvent.click(button);
+    expect(storeMocks.dropOutOfSchool).not.toHaveBeenCalled();
+  });
+
+  it('enables the drop-out button at or above compulsoryUntilAge', () => {
+    const onClose = vi.fn();
+    const player = makePlayer({ age: 19 }); // > 18
+    const { getByTestId } = render(
+      <EducationDetailModal
+        player={player}
+        state={enrolled({ currentStageId: 'wo_bachelor', yearOfStage: 1 })}
+        onClose={onClose}
+      />,
+    );
+
+    const button = getByTestId('education-detail-dropout') as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(button.textContent).not.toContain("can't drop out");
+
+    fireEvent.click(button);
+    expect(storeMocks.dropOutOfSchool).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
