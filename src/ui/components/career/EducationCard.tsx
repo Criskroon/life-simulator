@@ -84,7 +84,7 @@ export function EducationCard({ player, state, country, onClick }: EducationCard
   const sub =
     player.age < country.education.compulsoryUntilAge
       ? `Compulsory until ${country.education.compulsoryUntilAge}.`
-      : 'You can enrol again any time.';
+      : 'Tap to choose a school.';
   return (
     <button
       type="button"
