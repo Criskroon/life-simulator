@@ -41,15 +41,21 @@ interface AssetsScreenProps {
 export function AssetsScreen({ player, onOpenShop }: AssetsScreenProps) {
   const country = getCurrentCountry(player);
   const symbol = country.currency.symbol;
+  // Below 18 a player can't realistically own property, drive, or hold
+  // investments — the mock rows would read as fantasy. Hide those
+  // sections entirely and anchor net worth on the bank balance alone.
+  const isMinor = player.age < 18;
 
   const liquidTotal = player.money;
-  const propertyTotal = sumValues(MOCK_PROPERTIES);
-  const vehicleTotal = sumValues(MOCK_VEHICLES);
-  const investmentTotal = sumValues(MOCK_INVESTMENTS);
+  const propertyTotal = isMinor ? 0 : sumValues(MOCK_PROPERTIES);
+  const vehicleTotal = isMinor ? 0 : sumValues(MOCK_VEHICLES);
+  const investmentTotal = isMinor ? 0 : sumValues(MOCK_INVESTMENTS);
   const netWorthTotal =
     liquidTotal + propertyTotal + vehicleTotal + investmentTotal;
 
-  const { deltaAmount, qualitative } = mockNetWorthDelta(player, netWorthTotal);
+  const { deltaAmount, qualitative } = isMinor
+    ? { deltaAmount: 0, qualitative: 'first year' as const }
+    : mockNetWorthDelta(player, netWorthTotal);
   const history = synthesiseNetWorthHistory(netWorthTotal);
 
   const bank = BANK_BY_COUNTRY[player.country] ?? {
@@ -99,102 +105,110 @@ export function AssetsScreen({ player, onOpenShop }: AssetsScreenProps) {
         />
       </section>
 
-      {/* PROPERTY — mock home(s) + Real Estate pill. */}
-      <section className="space-y-2">
-        <AssetSectionHeader
-          title="Property"
-          countLabel={
-            MOCK_PROPERTIES.length === 1 ? '1 home' : `${MOCK_PROPERTIES.length} homes`
-          }
-          pill={{
-            label: 'Real Estate',
-            onClick: () => onOpenShop(null),
-            testId: 'assets-pill-property',
-          }}
-          testId="assets-section-property"
-        />
-        {MOCK_PROPERTIES.map((p) => (
-          <AssetRow
-            key={p.id}
-            testId={`assets-row-property-${p.id}`}
-            icon={<HouseGlyph />}
-            accentClass="bg-coral"
-            title={`${p.kind} · ${neighbourhood ?? p.locale}`}
-            subtitle={propertySubtitle(symbol, p)}
-            amountLabel={formatMoney(symbol, p.currentValue)}
-            progress={{
-              value: p.mortgageOriginal - p.mortgageRemaining,
-              total: p.mortgageOriginal,
-              progressColorClass: 'bg-success',
-              label: mortgageProgressLabel(p),
-            }}
-          />
-        ))}
-      </section>
+      {!isMinor && (
+        <>
+          {/* PROPERTY — mock home(s) + Real Estate pill. */}
+          <section className="space-y-2">
+            <AssetSectionHeader
+              title="Property"
+              countLabel={
+                MOCK_PROPERTIES.length === 1
+                  ? '1 home'
+                  : `${MOCK_PROPERTIES.length} homes`
+              }
+              pill={{
+                label: 'Real Estate',
+                onClick: () => onOpenShop(null),
+                testId: 'assets-pill-property',
+              }}
+              testId="assets-section-property"
+            />
+            {MOCK_PROPERTIES.map((p) => (
+              <AssetRow
+                key={p.id}
+                testId={`assets-row-property-${p.id}`}
+                icon={<HouseGlyph />}
+                accentClass="bg-coral"
+                title={`${p.kind} · ${neighbourhood ?? p.locale}`}
+                subtitle={propertySubtitle(symbol, p)}
+                amountLabel={formatMoney(symbol, p.currentValue)}
+                progress={{
+                  value: p.mortgageOriginal - p.mortgageRemaining,
+                  total: p.mortgageOriginal,
+                  progressColorClass: 'bg-success',
+                  label: mortgageProgressLabel(p),
+                }}
+              />
+            ))}
+          </section>
 
-      {/* VEHICLES — mock car(s) + Auto Dealer pill. */}
-      <section className="space-y-2">
-        <AssetSectionHeader
-          title="Vehicles"
-          countLabel={
-            MOCK_VEHICLES.length === 1 ? '1 car' : `${MOCK_VEHICLES.length} cars`
-          }
-          pill={{
-            label: 'Auto Dealer',
-            onClick: () => onOpenShop('auto-dealer'),
-            testId: 'assets-pill-vehicles',
-          }}
-          testId="assets-section-vehicles"
-        />
-        {MOCK_VEHICLES.map((v) => (
-          <AssetRow
-            key={v.id}
-            testId={`assets-row-vehicle-${v.id}`}
-            icon={<CarGlyph />}
-            accentClass="bg-section-town"
-            title={`${v.make} · ${v.yearTag}`}
-            subtitle={vehicleSubtitle(v)}
-            amountLabel={formatMoney(symbol, v.currentValue)}
-            progress={{
-              value: v.condition,
-              total: 100,
-              progressColorClass: conditionColorClass(v.condition),
-              label: `${conditionLabel(v.condition)} · ${v.condition}/100`,
-            }}
-          />
-        ))}
-      </section>
+          {/* VEHICLES — mock car(s) + Auto Dealer pill. */}
+          <section className="space-y-2">
+            <AssetSectionHeader
+              title="Vehicles"
+              countLabel={
+                MOCK_VEHICLES.length === 1
+                  ? '1 car'
+                  : `${MOCK_VEHICLES.length} cars`
+              }
+              pill={{
+                label: 'Auto Dealer',
+                onClick: () => onOpenShop('auto-dealer'),
+                testId: 'assets-pill-vehicles',
+              }}
+              testId="assets-section-vehicles"
+            />
+            {MOCK_VEHICLES.map((v) => (
+              <AssetRow
+                key={v.id}
+                testId={`assets-row-vehicle-${v.id}`}
+                icon={<CarGlyph />}
+                accentClass="bg-section-town"
+                title={`${v.make} · ${v.yearTag}`}
+                subtitle={vehicleSubtitle(v)}
+                amountLabel={formatMoney(symbol, v.currentValue)}
+                progress={{
+                  value: v.condition,
+                  total: 100,
+                  progressColorClass: conditionColorClass(v.condition),
+                  label: `${conditionLabel(v.condition)} · ${v.condition}/100`,
+                }}
+              />
+            ))}
+          </section>
 
-      {/* INVESTMENTS — mix of financial + sentimental + Belongings pill. */}
-      <section className="space-y-2">
-        <AssetSectionHeader
-          title="Investments"
-          countLabel={
-            MOCK_INVESTMENTS.length === 1
-              ? '1 holding'
-              : `${MOCK_INVESTMENTS.length} holdings`
-          }
-          pill={{
-            label: 'Belongings',
-            onClick: () => onOpenShop(null),
-            testId: 'assets-pill-investments',
-          }}
-          testId="assets-section-investments"
-        />
-        {MOCK_INVESTMENTS.map((inv) => (
-          <AssetRow
-            key={inv.id}
-            testId={`assets-row-investment-${inv.id}`}
-            icon={inv.kind === 'financial' ? <ChartGlyph /> : <GemGlyph />}
-            accentClass={
-              inv.kind === 'financial' ? 'bg-section-mind' : 'bg-section-heart'
-            }
-            title={`${inv.title} · ${inv.detail}`}
-            subtitle={inv.provenance}
-            amountLabel={formatMoney(symbol, inv.currentValue)}
-          />
-        ))}
-      </section>
+          {/* INVESTMENTS — mix of financial + sentimental + Belongings pill. */}
+          <section className="space-y-2">
+            <AssetSectionHeader
+              title="Investments"
+              countLabel={
+                MOCK_INVESTMENTS.length === 1
+                  ? '1 holding'
+                  : `${MOCK_INVESTMENTS.length} holdings`
+              }
+              pill={{
+                label: 'Belongings',
+                onClick: () => onOpenShop(null),
+                testId: 'assets-pill-investments',
+              }}
+              testId="assets-section-investments"
+            />
+            {MOCK_INVESTMENTS.map((inv) => (
+              <AssetRow
+                key={inv.id}
+                testId={`assets-row-investment-${inv.id}`}
+                icon={inv.kind === 'financial' ? <ChartGlyph /> : <GemGlyph />}
+                accentClass={
+                  inv.kind === 'financial' ? 'bg-section-mind' : 'bg-section-heart'
+                }
+                title={`${inv.title} · ${inv.detail}`}
+                subtitle={inv.provenance}
+                amountLabel={formatMoney(symbol, inv.currentValue)}
+              />
+            ))}
+          </section>
+        </>
+      )}
     </div>
   );
 }

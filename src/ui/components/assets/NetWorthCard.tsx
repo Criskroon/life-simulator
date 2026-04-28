@@ -56,7 +56,7 @@ export function NetWorthCard({
       >
         <span aria-hidden="true">{arrow} </span>
         {isFirstYear ? (
-          <>First year on record · {qualitative}</>
+          <>First year on record</>
         ) : (
           <>
             {deltaLabel} vs last year · {qualitative}
