@@ -87,6 +87,37 @@ export type EducationLevel =
   | 'tertiary'
   | 'graduate';
 
+/**
+ * ISCED 2011 levels — international comparable ladder (UNESCO). 1 = primary,
+ * 8 = doctorate. Stored on each stage so a foreign diploma can be compared
+ * against a country-local job requirement without re-mapping label strings.
+ */
+export type ISCEDLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+/** Sub-track within an ISCED level. Drives diploma-vs-job matching nuance. */
+export type ISCEDSubTrack = 'general' | 'vocational' | 'academic';
+
+/**
+ * Diploma specialisation — granular subject area used by the future job pool
+ * to bias which industries a candidate qualifies for. `general` means the
+ * stage carried no specialisation choice (or the player picked the default).
+ */
+export type SpecializationField =
+  | 'general'
+  | 'computer_science'
+  | 'engineering'
+  | 'science'
+  | 'social_sciences'
+  | 'humanities'
+  | 'health'
+  | 'medicine'
+  | 'economics'
+  | 'business'
+  | 'law'
+  | 'agriculture'
+  | 'creative'
+  | 'education';
+
 export type JobCategory =
   | 'entry'
   | 'mid'
@@ -145,6 +176,27 @@ export interface EducationStage {
     scholarshipsAvailable: boolean;
   };
   description: string;
+
+  /** International level (ISCED 2011). Set on every stage in v2.2+. */
+  iscedLevel: ISCEDLevel;
+  /** Sub-track within the ISCED level. Optional for primary; required upper. */
+  iscedSubTrack?: ISCEDSubTrack;
+  /** True if the player picks a specialisation when entering this stage. */
+  hasSpecialization: boolean;
+  /** Specialisations on offer when `hasSpecialization` is true. */
+  availableSpecializations?: SpecializationField[];
+}
+
+/**
+ * Job-side education gate. Used by the future career engine to decide
+ * whether a candidate's diploma history clears a posting.
+ */
+export interface EducationRequirement {
+  minLevel: ISCEDLevel;
+  requiredSubTrack?: ISCEDSubTrack;
+  requiredSpecializations?: SpecializationField[];
+  minGpa?: number;
+  requireLocalDiploma?: boolean;
 }
 
 export interface EducationSystem {

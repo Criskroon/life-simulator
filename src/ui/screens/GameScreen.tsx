@@ -23,6 +23,7 @@ import { ResolutionModal } from '../components/ResolutionModal';
 import { ShopRoute } from '../components/shop/ShopRoute';
 import type { StoreId } from '../components/shop/shopData';
 import { SidePanel } from '../components/SidePanel';
+import { StageTransitionModal } from '../components/StageTransitionModal';
 import { StatBar } from '../components/StatBar';
 import { TopBar } from '../components/TopBar';
 
@@ -107,25 +108,36 @@ export function GameScreen() {
   const currentEvent = pendingEvents[0];
   const insufficientPending =
     pendingInsufficientChoice !== null || pendingInsufficientActivity !== null;
+  const educationChoosing =
+    player.educationState?.status === 'choosing_next';
   // Modal stacking priority (only one shows at a time):
   // 1. ResolutionModal — show outcome of last choice before anything else
   // 2. InsufficientFundsModal — confirm/cancel before re-showing event
   // 3. EventModal — show next event to resolve
-  // 4. RelationshipProfileModal — player-initiated, slot above activities
-  // 5. ActivitiesMenu — player-initiated, lowest priority so any incoming
+  // 4. StageTransitionModal — auto on educationState.status==='choosing_next';
+  //    blocks ageUp until resolved (engine also enforces this)
+  // 5. RelationshipProfileModal — player-initiated, slot above activities
+  // 6. ActivitiesMenu — player-initiated, lowest priority so any incoming
   //    event from age-up takes precedence
   const showResolution = lastResolution !== null;
   const showInsufficient = !showResolution && insufficientPending;
   const showEvent = !showResolution && !showInsufficient && Boolean(currentEvent);
+  const showStageTransition =
+    !showResolution &&
+    !showInsufficient &&
+    !showEvent &&
+    educationChoosing;
   const showProfile =
     !showResolution &&
     !showInsufficient &&
     !showEvent &&
+    !showStageTransition &&
     profileTarget !== null;
   const showActivities =
     !showResolution &&
     !showInsufficient &&
     !showEvent &&
+    !showStageTransition &&
     !showProfile &&
     activitiesMenuOpen;
 
@@ -137,7 +149,8 @@ export function GameScreen() {
     lastResolution !== null ||
     insufficientPending ||
     activitiesMenuOpen ||
-    profileTarget !== null;
+    profileTarget !== null ||
+    educationChoosing;
 
   const handleTabChange = (tab: BottomNavTab) => {
     // Tabs toggle: tapping the active tab returns to home. The Activities
@@ -236,6 +249,8 @@ export function GameScreen() {
           onCancel={cancelInsufficientChoice}
         />
       )}
+
+      {showStageTransition && <StageTransitionModal player={player} />}
 
       {showProfile && profileTarget && (
         <RelationshipProfileModal

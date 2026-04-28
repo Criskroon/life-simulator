@@ -4,10 +4,16 @@ import { ALL_ACTIVITIES } from '../data/activities';
 import { ALL_EVENTS } from '../data/events';
 import { executeActivity, getAvailableActivities } from '../engine/activityEngine';
 import { canAffordChoice } from '../engine/choicePreview';
+import {
+  chooseNextStage as chooseNextStageEngine,
+  dropOut as dropOutEngine,
+  reEnroll as reEnrollEngine,
+} from '../engine/educationProgressionEngine';
 import { applyEffectsWithFeedback } from '../engine/effectsApplier';
 import { ageUp, endYear, resolveEvent } from '../engine/gameLoop';
 import { executeAction } from '../engine/interactions';
 import { createRng, hashSeed, type Rng } from '../engine/rng';
+import type { SpecializationField } from '../types/country';
 import type { Effect, GameEvent, ResolvedChoice } from '../types/events';
 import type { Person, PlayerState, RelationshipType } from '../types/gameState';
 import { createNewLife, type NewLifeOptions } from './newLife';
@@ -77,6 +83,11 @@ interface GameStore {
   hasSave: () => Promise<boolean>;
   deleteCurrentSave: () => Promise<void>;
   clearLastResolution: () => void;
+
+  // Education progression actions (Sessie 2.2)
+  chooseNextStage: (stageId: string, specialization?: SpecializationField) => void;
+  dropOutOfSchool: () => void;
+  reEnrollInStage: (stageId: string, specialization?: SpecializationField) => void;
 }
 
 function freshRngSeed(): number {
@@ -448,5 +459,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (yearAwaitingEnd) {
       get().endCurrentYear();
     }
+  },
+
+  chooseNextStage: (stageId, specialization) => {
+    const { player } = get();
+    if (!player) return;
+    const next = chooseNextStageEngine(player, stageId, specialization);
+    if (next === player) return;
+    set({ player: next });
+    void saveGame(next);
+  },
+
+  dropOutOfSchool: () => {
+    const { player } = get();
+    if (!player) return;
+    const next = dropOutEngine(player);
+    if (next === player) return;
+    set({ player: next });
+    void saveGame(next);
+  },
+
+  reEnrollInStage: (stageId, specialization) => {
+    const { player } = get();
+    if (!player) return;
+    const next = reEnrollEngine(player, stageId, specialization);
+    if (next === player) return;
+    set({ player: next });
+    void saveGame(next);
   },
 }));

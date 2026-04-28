@@ -4,16 +4,17 @@ import {
   adjustSalary,
   getCurrentCountry,
 } from '../../../game/engine/countryEngine';
-import type {
-  EducationLevel,
-  EducationRecord,
-  PlayerState,
-} from '../../../game/types/gameState';
+import { getEducationState } from '../../../game/engine/educationProgressionEngine';
+import type { PlayerState } from '../../../game/types/gameState';
 import { useComingSoon } from '../ComingSoonHandler';
 import { CareerHistorySection } from './CareerHistorySection';
 import { CollapsibleSection } from './CollapsibleSection';
 import { CurrentPositionCard } from './CurrentPositionCard';
 import { FIND_WORK_LISTINGS, SPECIAL_CAREERS } from './careerData';
+import { DiplomaHistorySection } from './DiplomaHistorySection';
+import { EducationCard } from './EducationCard';
+import { EducationDetailModal } from './EducationDetailModal';
+import { stageDisplayName } from './educationFormat';
 import { InlineActionRows } from './InlineActionRows';
 import { JobListing } from './JobListing';
 
@@ -25,15 +26,6 @@ interface CareerScreenProps {
 const TRAINING_COURSE_BASE_PRICE = 1200;
 
 type SectionId = 'education' | 'find' | 'special';
-
-const EDUCATION_LABEL: Record<EducationLevel, string> = {
-  primary: 'Primary school',
-  middle: 'Middle school',
-  high_school: 'High school',
-  community_college: 'Community college',
-  university: 'University',
-  graduate: 'Graduate school',
-};
 
 /**
  * Career tab — a status overview, not a flow. The screen reads top-down:
@@ -53,6 +45,7 @@ export function CareerScreen({ player }: CareerScreenProps) {
   const [openSections, setOpenSections] = useState<Set<SectionId>>(
     () => new Set<SectionId>(),
   );
+  const [educationDetailOpen, setEducationDetailOpen] = useState(false);
 
   const toggle = (id: SectionId) => {
     setOpenSections((prev) => {
@@ -64,7 +57,7 @@ export function CareerScreen({ player }: CareerScreenProps) {
   };
 
   const job = player.job;
-  const currentEducation = pickCurrentEducation(player.education);
+  const educationState = getEducationState(player);
   const lifeStage = lifeStageFor(player.age);
 
   const formatYearlySalary = (salary: number): string =>
@@ -126,77 +119,41 @@ export function CareerScreen({ player }: CareerScreenProps) {
         />
       )}
 
-      {/* Education */}
+      {/* Education — driven by educationState since 2.2 */}
       <CollapsibleSection
         sectionId="education"
         title="Education"
-        eyebrow={
-          currentEducation
-            ? currentEducation.graduated
-              ? `Done. ${EDUCATION_LABEL[currentEducation.level]} on the wall.`
-              : `Still in ${EDUCATION_LABEL[currentEducation.level].toLowerCase()}.`
-            : 'No school of your own choosing yet.'
+        eyebrow={educationEyebrow(player, educationState, country)}
+        meta={
+          educationState.diplomas.length > 0
+            ? `${educationState.diplomas.length} diploma${educationState.diplomas.length === 1 ? '' : 's'}`
+            : '9 paths'
         }
-        meta={currentEducation ? EDUCATION_LABEL[currentEducation.level] : '9 paths'}
         open={openSections.has('education')}
         onToggle={() => toggle('education')}
       >
         <div className="space-y-3">
-          {currentEducation && (
-            <div
-              data-testid="career-education-summary"
-              className="rounded-2xl border border-cream-dark bg-cream px-4 py-3 shadow-warm"
-            >
-              <div className="font-display text-[15px] font-semibold tracking-[-0.01em] text-ink">
-                {currentEducation.institutionName}
-              </div>
-              <div className="mt-[2px] font-mono text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-soft">
-                {EDUCATION_LABEL[currentEducation.level]} ·{' '}
-                {currentEducation.graduated ? 'graduated' : 'in progress'}
-              </div>
-              {currentEducation.gpa > 0 && (
-                <div className="mt-[2px] font-mono text-[10px] font-medium tabular-nums text-ink-faint">
-                  GPA {currentEducation.gpa.toFixed(2)}
-                </div>
-              )}
-            </div>
-          )}
-          <div className="space-y-2">
-            <ActionPill
-              label="Apply for university"
-              hint="Pick a city you've never lived in."
-              onClick={() =>
-                showComingSoon(
-                  'Apply for university',
-                  'Higher-ed applications arrive with the school pass.',
-                )
-              }
-              testId="career-action-apply-uni"
-            />
-            <ActionPill
-              label="Take a course"
-              hint="Evening class. Two hours a week. Worth it."
-              onClick={() =>
-                showComingSoon(
-                  'Take a course',
-                  'Short courses land with the skills pass.',
-                )
-              }
-              testId="career-action-course"
-            />
-            <ActionPill
-              label="Drop out"
-              hint="Some doors close. Others were never yours."
-              tone="danger"
-              onClick={() =>
-                showComingSoon(
-                  'Drop out',
-                  'Leaving school early arrives with the school pass.',
-                )
-              }
-              testId="career-action-dropout"
-            />
-          </div>
+          <EducationCard
+            player={player}
+            state={educationState}
+            country={country}
+            onClick={() => setEducationDetailOpen(true)}
+          />
+          <DiplomaHistorySection
+            diplomas={educationState.diplomas}
+            country={country}
+          />
+          <ActionPill
+            label="Take a course"
+            hint="Evening class. Two hours a week. Worth it."
+            onClick={() =>
+              showComingSoon(
+                'Take a course',
+                'Short courses land with the skills pass.',
+              )
+            }
+            testId="career-action-course"
+          />
         </div>
       </CollapsibleSection>
 
@@ -253,6 +210,14 @@ export function CareerScreen({ player }: CareerScreenProps) {
 
       {/* History — pinned, never collapsible. */}
       <CareerHistorySection />
+
+      {educationDetailOpen && educationState.status !== 'choosing_next' && (
+        <EducationDetailModal
+          player={player}
+          state={educationState}
+          onClose={() => setEducationDetailOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -351,17 +316,30 @@ function BriefcaseGlyph() {
 }
 
 /**
- * Pick the most relevant single education record to show as the
- * player's current standing. Prefers an in-progress record (no endYear);
- * otherwise falls back to the most recently graduated one.
+ * One-line eyebrow for the Education collapsible header. Mirrors the three
+ * states of `educationState.status` so the section reads sensibly even when
+ * collapsed.
  */
-function pickCurrentEducation(
-  education: ReadonlyArray<EducationRecord>,
-): EducationRecord | null {
-  if (education.length === 0) return null;
-  const inProgress = education.find((e) => e.endYear === null);
-  if (inProgress) return inProgress;
-  return [...education].sort((a, b) => (b.endYear ?? 0) - (a.endYear ?? 0))[0];
+function educationEyebrow(
+  player: PlayerState,
+  state: ReturnType<typeof getEducationState>,
+  country: ReturnType<typeof getCurrentCountry>,
+): string {
+  if (state.status === 'enrolled' && state.currentStageId) {
+    return `Year ${state.yearOfStage} of ${stageDisplayName(state.currentStageId, country)}.`;
+  }
+  if (state.status === 'choosing_next') {
+    return 'Time to choose your next school.';
+  }
+  if (state.dropOutReason === 'graduated') {
+    return 'Done with school. Diplomas on the wall.';
+  }
+  if (state.dropOutReason === 'dropped_out') {
+    return 'Out of school for now.';
+  }
+  return player.age < country.education.schoolStartAge
+    ? `Starts at ${country.education.schoolStartAge}.`
+    : 'No school of your own choosing yet.';
 }
 
 /**

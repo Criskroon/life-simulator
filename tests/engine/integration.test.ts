@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { ALL_EVENTS } from '../../src/game/data/events';
+import {
+  chooseNextStage,
+  getEducationState,
+} from '../../src/game/engine/educationProgressionEngine';
 import { ageUp, endYear, resolveEvent } from '../../src/game/engine/gameLoop';
 import { createRng } from '../../src/game/engine/rng';
 import { createNewLife } from '../../src/game/state/newLife';
@@ -27,6 +31,14 @@ describe('integration: full life with fixed seed', () => {
     while (player.alive && safetyTicks < 200) {
       safetyTicks++;
       const previousAge = player.age;
+
+      // The 2.2 progression engine blocks ageUp while a stage transition is
+      // pending. Auto-resolve by picking the first available next stage so
+      // the integration loop stays a pure consistency check.
+      if (getEducationState(player).status === 'choosing_next') {
+        const next = getEducationState(player).availableNextStages?.[0];
+        if (next) player = chooseNextStage(player, next);
+      }
 
       const { state: aged, pendingEvents } = ageUp(player, ALL_EVENTS, tickRng);
       player = aged;

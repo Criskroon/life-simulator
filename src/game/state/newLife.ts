@@ -2,6 +2,7 @@ import { COUNTRIES, getCountry } from '../data/countries';
 import { calculateActionBudget } from '../engine/actionBudget';
 import { getNamePool } from '../engine/countryEngine';
 import { randomFirstName, randomSurname } from '../data/names';
+import { emptyEducationState } from '../engine/educationProgressionEngine';
 import {
   emptyRelationshipState,
   syncLegacyView,
@@ -102,16 +103,8 @@ export function createNewLife(rng: Rng, options: NewLifeOptions = {}): PlayerSta
     },
     money: 0,
     job: null,
-    education: [
-      {
-        level: 'primary',
-        institutionName: 'Local Primary School',
-        startYear: currentYear,
-        endYear: null,
-        graduated: false,
-        gpa: 70,
-      },
-    ],
+    education: [],
+    educationState: emptyEducationState(),
     relationships: syncLegacyView(relationshipState),
     relationshipState,
     assets: [],

@@ -2,6 +2,7 @@ import type { GameEvent, ResolvedChoice } from '../types/events';
 import type { PlayerState } from '../types/gameState';
 import { calculateActionBudget } from './actionBudget';
 import { resetActionUsage } from './actionCooldowns';
+import { getEducationState, progressEducation } from './educationProgressionEngine';
 import { applyEffectsWithFeedback } from './effectsApplier';
 import { selectYearEvents } from './eventSelector';
 import { enrichGeneratedRelationships } from './nameGenerator';
@@ -31,6 +32,12 @@ export function ageUp(
     return { state, pendingEvents: [] };
   }
 
+  // Education-state gate: a graduated stage hands control to the player —
+  // ageUp can't advance until they pick a next stage or formally drop out.
+  if (getEducationState(state).status === 'choosing_next') {
+    return { state, pendingEvents: [] };
+  }
+
   let next: PlayerState = ensureRelationshipState({
     ...state,
     age: state.age + 1,
@@ -42,6 +49,10 @@ export function ageUp(
   // past their decay year, fades unmaintained friends, caps significant
   // exes. Replaces the old ageRelationships pass.
   next = decayRelationships(next);
+  // Education progression — auto-enrol at school start age, advance enrolled
+  // year, or graduate (which may flip status to choosing_next; the next
+  // ageUp will then early-exit until the player resolves the choice).
+  next = progressEducation(next, rng);
   // Refresh the activities budget for the new year. Anything left over from
   // last year evaporates; the player has to spend or lose them.
   next = { ...next, actionsRemainingThisYear: calculateActionBudget(next) };

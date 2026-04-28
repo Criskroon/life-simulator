@@ -4,6 +4,7 @@ import {
   syncLegacyView,
 } from '../engine/relationshipEngine';
 import type { PlayerState } from '../types/gameState';
+import { migrateToV3, needsV3Migration } from './migrations/v3-education-state';
 
 /**
  * Storage adapter contract. Async on purpose — localStorage is sync, but
@@ -105,6 +106,12 @@ function migrate(state: PlayerState): PlayerState {
       relationshipState: rs,
       relationships: syncLegacyView(rs),
     };
+  }
+
+  // v3 (Sessie 2.2): synthesise `educationState` from the legacy
+  // `education` array if the save predates the progression engine.
+  if (needsV3Migration(next)) {
+    next = migrateToV3(next);
   }
 
   return next;
