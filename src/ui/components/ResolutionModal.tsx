@@ -37,8 +37,6 @@ const SPECIAL_ICONS: Record<SpecialEffect, string> = {
   adjustRelationshipLevel: '💗',
   addAsset: '🛍️',
   addCrime: '🚓',
-  addEducation: '🏫',
-  completeEducation: '🎓',
   setJob: '💼',
   leaveJob: '📦',
   die: '⚰️',

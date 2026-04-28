@@ -27,7 +27,7 @@ careers, and systems on top without restructuring.
 
 ```bash
 npm run dev          # → http://localhost:5180  (5173 is reserved by another project on this machine)
-npm test             # 359 tests (325 engine + 34 UI) — must stay green
+npm test             # 459 tests (engine + UI + data) — must stay green
 npm run build        # tsc -b && vite build
 ```
 
@@ -120,8 +120,8 @@ every CI run, so a malformed choice (both/neither, single-outcome list, empty
 narrative, zero weights) fails the build immediately.
 
 Effect ops: `+ - * / =` for arithmetic. Specials available: `addRelationship`,
-`removeRelationship`, `addAsset`, `addCrime`, `addEducation`,
-`completeEducation`, `setJob`, `leaveJob`, `die`. Add a new one in
+`removeRelationship`, `addAsset`, `addCrime`, `setJob`, `leaveJob`, `die`.
+Add a new one in
 `effectsApplier.ts` — and if it's something the player should see in the
 StatFeedback toast, also extend `summarizeSpecial()` in the same file with
 a UI-ready label.
@@ -169,7 +169,7 @@ the name pool needs to be different (e.g. German), add a new pool to
 ## Testing
 
 ```bash
-npm test             # one-shot, all 343 tests
+npm test             # one-shot, all 459 tests
 npm run test:watch
 ```
 

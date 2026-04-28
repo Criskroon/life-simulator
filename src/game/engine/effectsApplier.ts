@@ -2,7 +2,6 @@ import type { Effect, SpecialSummary, StatDelta } from '../types/events';
 import type {
   Asset,
   CrimeRecord,
-  EducationRecord,
   FamilyMember,
   Friend,
   Job,
@@ -272,24 +271,6 @@ const SPECIAL_HANDLERS: Record<string, SpecialHandler> = {
     return { ...state, criminalRecord: [...state.criminalRecord, crime] };
   },
 
-  addEducation: (state, payload) => {
-    const edu = payload as unknown as EducationRecord;
-    return { ...state, education: [...state.education, edu] };
-  },
-
-  completeEducation: (state, payload) => {
-    const level = payload.level as string | undefined;
-    if (!level) return state;
-    return {
-      ...state,
-      education: state.education.map((edu) =>
-        edu.level === level && edu.endYear === null
-          ? { ...edu, endYear: state.currentYear, graduated: true }
-          : edu,
-      ),
-    };
-  },
-
   setJob: (state, payload) => {
     const job = payload as unknown as Job;
     // Author-supplied salary is in baseline (GB) units; scale to the
@@ -528,15 +509,6 @@ function summarizeSpecial(effect: Effect, state: PlayerState): SpecialSummary | 
       const crime = payload as Partial<CrimeRecord>;
       const verb = crime.caught ? 'Caught for' : 'Got away with';
       return { special: 'addCrime', label: crime.crime ? `${verb} ${crime.crime}` : 'Committed a crime' };
-    }
-    case 'addEducation': {
-      const edu = payload as Partial<EducationRecord>;
-      return { special: 'addEducation', label: edu.institutionName ? `Enrolled: ${edu.institutionName}` : 'Started a new education' };
-    }
-    case 'completeEducation': {
-      const level = payload.level as string | undefined;
-      const pretty = level ? level.replace(/_/g, ' ') : 'school';
-      return { special: 'completeEducation', label: `Graduated: ${pretty}` };
     }
     case 'setJob': {
       const job = payload as Partial<Job>;

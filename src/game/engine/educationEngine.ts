@@ -15,17 +15,6 @@ export function getEducationStage(
   return country.education.stages.find((s) => s.id === stageId);
 }
 
-export function getNextStages(
-  country: Country,
-  currentStageId: string,
-): EducationStage[] {
-  const current = getEducationStage(country, currentStageId);
-  if (!current) return [];
-  return current.nextStages
-    .map((id) => getEducationStage(country, id))
-    .filter((s): s is EducationStage => s !== undefined);
-}
-
 export function canEnterStage(
   country: Country,
   stageId: string,

@@ -9,8 +9,8 @@ events and additional systems on top without restructuring.
 
 ```bash
 npm install
-npm run dev      # → http://localhost:5173
-npm test         # 24 tests across the engine
+npm run dev      # → http://localhost:5180
+npm test         # 459 tests across the engine, UI, and data
 npm run build    # production build → dist/
 ```
 

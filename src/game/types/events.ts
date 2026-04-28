@@ -37,8 +37,6 @@ export type SpecialEffect =
   | 'removeRelationship'
   | 'addAsset'
   | 'addCrime'
-  | 'addEducation'
-  | 'completeEducation'
   | 'setJob'
   | 'leaveJob'
   | 'die';
