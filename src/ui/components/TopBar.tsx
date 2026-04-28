@@ -1,5 +1,8 @@
 import type { PlayerState } from '../../game/types/gameState';
 import { getCountry } from '../../game/data/countries';
+import { getEducationStage } from '../../game/engine/educationEngine';
+import { formatMoney } from '../../game/engine/countryEngine';
+import { formatSpecialization } from './career/educationFormat';
 
 interface TopBarProps {
   player: PlayerState;
@@ -7,6 +10,43 @@ interface TopBarProps {
    *  itself ships in a later phase; for now the press is logged so the
    *  affordance can be exercised without affecting game state. */
   onProfilePress?: () => void;
+}
+
+interface TopBarStatus {
+  primary: string;
+  secondary: string;
+}
+
+/**
+ * What to show on the second status row: the active job, current education,
+ * or an unemployed fallback. Job wins when both are present — once the
+ * conflict popup ships a player can't realistically have both.
+ */
+function getTopBarStatus(player: PlayerState): TopBarStatus {
+  if (player.job) {
+    const country = getCountry(player.country);
+    return {
+      primary: player.job.title,
+      secondary: `${formatMoney(country, player.job.salary)}/mo`,
+    };
+  }
+
+  const eduState = player.educationState;
+  if (eduState?.status === 'enrolled' && eduState.currentStageId) {
+    const country = getCountry(player.country);
+    const stage = getEducationStage(country, eduState.currentStageId);
+    if (stage) {
+      const stageName = stage.nameLocal ?? stage.name;
+      return {
+        primary: `${stageName} · Year ${eduState.yearOfStage}`,
+        secondary: eduState.currentSpecialization
+          ? formatSpecialization(eduState.currentSpecialization)
+          : `GPA ${eduState.currentGpa.toFixed(1)}`,
+      };
+    }
+  }
+
+  return { primary: 'Unemployed', secondary: '—' };
 }
 
 function nameSizeClass(fullName: string): string {
@@ -24,6 +64,7 @@ export function TopBar({ player, onProfilePress }: TopBarProps) {
   const country = getCountry(player.country);
   const fullName = `${player.firstName} ${player.lastName}`;
   const moneyAmount = player.money.toLocaleString();
+  const status = getTopBarStatus(player);
   const handleProfilePress = () => {
     if (onProfilePress) {
       onProfilePress();
@@ -77,6 +118,20 @@ export function TopBar({ player, onProfilePress }: TopBarProps) {
               {country.currency.symbol}
               {moneyAmount}
             </div>
+          </div>
+        </div>
+        <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-cream-dark/60 pt-2">
+          <div
+            data-testid="top-bar-status-primary"
+            className="font-sans text-[13px] font-semibold text-ink truncate min-w-0 flex-1"
+          >
+            {status.primary}
+          </div>
+          <div
+            data-testid="top-bar-status-secondary"
+            className="font-mono text-[11px] text-ink-soft whitespace-nowrap shrink-0"
+          >
+            {status.secondary}
           </div>
         </div>
       </button>

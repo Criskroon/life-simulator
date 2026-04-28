@@ -1,7 +1,11 @@
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TopBar } from '../../src/ui/components/TopBar';
-import type { PlayerState } from '../../src/game/types/gameState';
+import type {
+  EducationState,
+  Job,
+  PlayerState,
+} from '../../src/game/types/gameState';
 
 afterEach(() => {
   cleanup();
@@ -114,5 +118,87 @@ describe('TopBar', () => {
     );
     const worth = getByTestId('top-bar-net-worth');
     expect(worth.className).toContain('text-xl');
+  });
+});
+
+describe('TopBar status row', () => {
+  function enrolled(overrides: Partial<EducationState> = {}): EducationState {
+    return {
+      status: 'enrolled',
+      currentStageId: 'vwo',
+      yearOfStage: 4,
+      currentGpa: 7.4,
+      diplomas: [],
+      ...overrides,
+    } as EducationState;
+  }
+
+  function job(overrides: Partial<Job> = {}): Job {
+    return {
+      title: 'Barista',
+      careerId: 'service',
+      level: 1,
+      salary: 1800,
+      performance: 50,
+      yearsAtJob: 1,
+      ...overrides,
+    };
+  }
+
+  it('shows education stage and year when enrolled with no job', () => {
+    const { getByTestId } = render(
+      <TopBar player={makePlayer({ educationState: enrolled() })} />,
+    );
+    expect(getByTestId('top-bar-status-primary').textContent).toBe(
+      'VWO · Year 4',
+    );
+  });
+
+  it('shows specialization when set on the enrolled stage', () => {
+    const { getByTestId } = render(
+      <TopBar
+        player={makePlayer({
+          educationState: enrolled({ currentSpecialization: 'science' }),
+        })}
+      />,
+    );
+    expect(getByTestId('top-bar-status-secondary').textContent).toBe('Science');
+  });
+
+  it('falls back to GPA when no specialization is set', () => {
+    const { getByTestId } = render(
+      <TopBar player={makePlayer({ educationState: enrolled() })} />,
+    );
+    expect(getByTestId('top-bar-status-secondary').textContent).toBe('GPA 7.4');
+  });
+
+  it('prioritizes job title over education when both are present', () => {
+    const { getByTestId } = render(
+      <TopBar
+        player={makePlayer({
+          job: job({ title: 'Software Engineer' }),
+          educationState: enrolled(),
+        })}
+      />,
+    );
+    expect(getByTestId('top-bar-status-primary').textContent).toBe(
+      'Software Engineer',
+    );
+  });
+
+  it('shows the job salary in the secondary slot', () => {
+    const { getByTestId } = render(
+      <TopBar player={makePlayer({ job: job({ salary: 1800 }) })} />,
+    );
+    // NL country, salary scaled by adjustSalary — value is country-adjusted at
+    // setJob time, so here we just assert the format and currency symbol.
+    const secondary = getByTestId('top-bar-status-secondary').textContent ?? '';
+    expect(secondary).toMatch(/^€[\d,]+\/mo$/);
+  });
+
+  it('shows Unemployed when no job and not enrolled', () => {
+    const { getByTestId } = render(<TopBar player={makePlayer()} />);
+    expect(getByTestId('top-bar-status-primary').textContent).toBe('Unemployed');
+    expect(getByTestId('top-bar-status-secondary').textContent).toBe('—');
   });
 });

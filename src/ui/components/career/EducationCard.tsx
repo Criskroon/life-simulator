@@ -34,14 +34,19 @@ export function EducationCard({ player, state, country, onClick }: EducationCard
         <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-brass">
           {stage.level.replace('_', ' ')} · year {state.yearOfStage} of {stage.duration}
         </div>
-        <div className="mt-1 font-display text-[18px] font-bold leading-tight tracking-[-0.02em] text-ink">
+        <div
+          data-testid="education-card-title"
+          className="mt-1 font-display text-[18px] font-bold leading-tight tracking-[-0.02em] text-ink"
+        >
           {stage.nameLocal}
+          {state.currentSpecialization && (
+            <span data-testid="education-card-specialization" className="text-ink-soft font-semibold">
+              {' '}— {formatSpecialization(state.currentSpecialization)}
+            </span>
+          )}
         </div>
         <div className="mt-[2px] font-sans text-[12.5px] leading-snug text-ink-soft">
           GPA {state.currentGpa.toFixed(1)}
-          {state.currentSpecialization
-            ? ` · ${formatSpecialization(state.currentSpecialization)}`
-            : ''}
         </div>
       </button>
     );
