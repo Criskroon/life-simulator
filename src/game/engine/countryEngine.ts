@@ -1,6 +1,7 @@
 import type { NamePool } from '../data/names';
 import { COUNTRIES, getCountry as getCountryFromData } from '../data/countries';
 import type {
+  City,
   Continent,
   Country,
   CountryCode,
@@ -19,7 +20,7 @@ import type { PlayerState } from '../types/gameState';
  * meaning when applied to a GB player.
  */
 
-const GB_AVERAGE_SALARY = 44500; // From COUNTRIES.GB.stats.averageSalary
+const GB_AVERAGE_SALARY = 44500; // From COUNTRIES.GB.economics.averageSalary
 
 // ---------- Lookups -------------------------------------------------------
 
@@ -59,7 +60,7 @@ export function getCurrentCountry(state: PlayerState): Country {
  */
 export function adjustSalary(baseSalaryUSD: number, country: Country): number {
   return Math.round(
-    baseSalaryUSD * (country.stats.averageSalary / GB_AVERAGE_SALARY),
+    baseSalaryUSD * (country.economics.averageSalary / GB_AVERAGE_SALARY),
   );
 }
 
@@ -71,7 +72,7 @@ export function adjustSalary(baseSalaryUSD: number, country: Country): number {
  * Used at apply-time by money-affecting effects in events.
  */
 export function adjustPrice(basePriceUSD: number, country: Country): number {
-  return Math.round(basePriceUSD * country.stats.costOfLivingIndex);
+  return Math.round(basePriceUSD * country.economics.costOfLivingIndex);
 }
 
 /**
@@ -83,7 +84,7 @@ export function adjustHousePrice(
   basePriceUSD: number,
   country: Country,
 ): number {
-  return Math.round(basePriceUSD * country.stats.housingPriceIndex);
+  return Math.round(basePriceUSD * country.economics.housingPriceIndex);
 }
 
 // ---------- Rule helpers --------------------------------------------------
@@ -98,12 +99,12 @@ export function isLegalAge(
 ): boolean {
   const minAge =
     action === 'drink'
-      ? country.rules.drinkingAge
+      ? country.legal.drinkingAge
       : action === 'smoke'
-        ? country.rules.smokingAge
+        ? country.legal.smokingAge
         : action === 'marry'
-          ? country.rules.marriageAge
-          : country.rules.drivingAge;
+          ? country.legal.legalMarriageAge
+          : country.legal.drivingAge;
   return age >= minAge;
 }
 
@@ -114,8 +115,8 @@ export interface SchoolingPeriod {
 
 export function getSchoolingPeriod(country: Country): SchoolingPeriod {
   return {
-    start: country.rules.schoolStartAge,
-    end: country.rules.schoolEndAge,
+    start: country.education.schoolStartAge,
+    end: country.education.compulsoryUntilAge,
   };
 }
 
@@ -129,4 +130,103 @@ export function getSchoolingPeriod(country: Country): SchoolingPeriod {
 export function getNamePool(country: Country): NamePool {
   if (country.languages[0] === 'nl') return 'dutch';
   return 'english';
+}
+
+// ---------- City helpers --------------------------------------------------
+
+export function getCapital(country: Country): City | undefined {
+  return country.cities.find((c) => c.isCapital);
+}
+
+export function getCity(country: Country, cityId: string): City | undefined {
+  return country.cities.find((c) => c.id === cityId);
+}
+
+// ---------- Random-name helpers (used by tests + future content) ---------
+
+export function getRandomFirstName(
+  country: Country,
+  gender: 'male' | 'female',
+): string {
+  const names =
+    gender === 'male'
+      ? country.names.firstNamesMale
+      : country.names.firstNamesFemale;
+  if (names.length === 0) return 'Unknown';
+  return names[Math.floor(Math.random() * names.length)] as string;
+}
+
+export function getRandomLastName(country: Country): string {
+  const names = country.names.lastNames;
+  if (names.length === 0) return 'Unknown';
+  return names[Math.floor(Math.random() * names.length)] as string;
+}
+
+export function getRandomFullName(
+  country: Country,
+  gender: 'male' | 'female',
+): string {
+  const first = getRandomFirstName(country, gender);
+  const last = getRandomLastName(country);
+  if (country.culture.nameOrder === 'last_first') {
+    return `${last} ${first}`;
+  }
+  return `${first} ${last}`;
+}
+
+/**
+ * Pick an age-appropriate first name. Splits the names list into 5 buckets
+ * by birth-decade. Assumes the source list is sorted modern → classic
+ * (as in NL's names entry). Falls back to random for short lists.
+ */
+export function getNameByAge(
+  country: Country,
+  age: number,
+  gender: 'male' | 'female',
+): string {
+  const names =
+    gender === 'male'
+      ? country.names.firstNamesMale
+      : country.names.firstNamesFemale;
+
+  const total = names.length;
+  if (total === 0) return 'Unknown';
+  if (total < 5) return names[Math.floor(Math.random() * total)] as string;
+
+  const bucketSize = Math.floor(total / 5);
+  let startIdx: number;
+  let endIdx: number;
+
+  if (age <= 18) {
+    startIdx = 0;
+    endIdx = bucketSize;
+  } else if (age <= 40) {
+    startIdx = bucketSize;
+    endIdx = bucketSize * 2;
+  } else if (age <= 60) {
+    startIdx = bucketSize * 2;
+    endIdx = bucketSize * 3;
+  } else if (age <= 75) {
+    startIdx = bucketSize * 3;
+    endIdx = bucketSize * 4;
+  } else {
+    startIdx = bucketSize * 4;
+    endIdx = total;
+  }
+
+  const slice = names.slice(startIdx, endIdx);
+  if (slice.length === 0) {
+    return names[Math.floor(Math.random() * total)] as string;
+  }
+  return slice[Math.floor(Math.random() * slice.length)] as string;
+}
+
+/** Format a money amount with the country's currency symbol. */
+export function formatMoney(country: Country, amount: number): string {
+  const { symbol } = country.currency;
+  const formatted = amount.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+  return `${symbol}${formatted}`;
 }

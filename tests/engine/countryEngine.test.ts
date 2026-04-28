@@ -16,9 +16,10 @@ import { applyEffect } from '../../src/game/engine/effectsApplier';
 import { ageUp } from '../../src/game/engine/gameLoop';
 import { createRng } from '../../src/game/engine/rng';
 import { renderTemplate } from '../../src/game/engine/templates';
+import type { CountryCode } from '../../src/game/types/country';
 import type { PlayerState } from '../../src/game/types/gameState';
 
-const baseState = (country = 'GB'): PlayerState => ({
+const baseState = (country: CountryCode = 'GB'): PlayerState => ({
   id: 'test',
   firstName: 'Test',
   lastName: 'User',
@@ -48,12 +49,20 @@ describe('countryEngine — lookups', () => {
   });
 
   it('falls back to first country on unknown code', () => {
-    expect(getCountry('XX').code).toBe('NL');
+    // CountryCode is a strict union now; cast for the runtime fallback test.
+    expect(getCountry('XX' as CountryCode).code).toBe('NL');
   });
 
   it('returns all countries', () => {
     const all = getAllCountries();
-    expect(all.map((c) => c.code).sort()).toEqual(['GB', 'NL', 'US']);
+    expect(all.map((c) => c.code).sort()).toEqual([
+      'BR',
+      'GB',
+      'JP',
+      'NL',
+      'US',
+      'ZA',
+    ]);
   });
 
   it('filters by continent', () => {
@@ -117,8 +126,10 @@ describe('countryEngine — rule helpers', () => {
   });
 
   it('returns the schooling period', () => {
-    expect(getSchoolingPeriod(getCountry('NL'))).toEqual({ start: 5, end: 18 });
-    expect(getSchoolingPeriod(getCountry('US'))).toEqual({ start: 6, end: 18 });
+    // NL: schoolStartAge 4 (basisschool), compulsory until 18.
+    // US: schoolStartAge 5, compulsory until 16 (federal).
+    expect(getSchoolingPeriod(getCountry('NL'))).toEqual({ start: 4, end: 18 });
+    expect(getSchoolingPeriod(getCountry('US'))).toEqual({ start: 5, end: 16 });
   });
 
   it('maps language to name pool', () => {
@@ -154,9 +165,11 @@ describe('country.* paths in conditions / effects', () => {
     expect(getAtPath(baseState('US'), 'country.culturalCluster')).toBe('Anglo-Saxon');
   });
 
-  it('resolves nested country stats', async () => {
+  it('resolves nested country economics + demographics', async () => {
     const { getAtPath } = await import('../../src/game/engine/paths');
-    expect(getAtPath(baseState('NL'), 'country.stats.lifeExpectancy')).toBe(81.7);
+    expect(getAtPath(baseState('NL'), 'country.economics.gdpPerCapita')).toBe(65915);
+    expect(getAtPath(baseState('NL'), 'country.demographics.lifeExpectancy.female')).toBe(83);
+    expect(getAtPath(baseState('NL'), 'country.legal.drinkingAge')).toBe(18);
   });
 });
 
@@ -183,7 +196,7 @@ describe('wire-up: setJob applies adjustSalary at apply-time', () => {
   });
 
   it('US setJob pays more than NL setJob for the same baseline', () => {
-    const make = (country: string) =>
+    const make = (country: CountryCode) =>
       applyEffect(baseState(country), {
         special: 'setJob',
         payload: {
@@ -220,7 +233,7 @@ describe('wire-up: applyPassiveEffects pays the country-adjusted salary', () => 
   });
 
   it('US job income per year exceeds NL income for the same baseline salary', () => {
-    const make = (country: string) => {
+    const make = (country: CountryCode) => {
       const withJob = applyEffect(baseState(country), {
         special: 'setJob',
         payload: {
@@ -304,8 +317,9 @@ describe('persistence migration', () => {
       },
     });
 
-    // Manually inject a legacy save with country='UK'.
-    const legacy = { ...baseState('UK') };
+    // Manually inject a legacy save with country='UK'. The CountryCode
+    // union no longer includes 'UK' (we use 'GB' now), so cast around it.
+    const legacy = { ...baseState('GB'), country: 'UK' as CountryCode };
     await saveGame(legacy as PlayerState);
 
     const loaded = await loadGame();

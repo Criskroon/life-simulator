@@ -22,13 +22,13 @@ import { renderTemplate } from './templates';
 
 /**
  * Country gating is hardcoded for the V1 lottery activity. When a second
- * gated activity ships, replace this with a `requireRule?: keyof CountryRules`
- * field on Activity and check that rule generically.
+ * gated activity ships, replace this with a `requireLegalFlag?: keyof Legal`
+ * field on Activity and check that flag generically.
  */
 function passesCountryGate(activity: Activity, state: PlayerState): boolean {
   if (!activity.countryGated) return true;
   const country = getCurrentCountry(state);
-  if (activity.id === 'lottery_ticket') return country.rules.gambling;
+  if (activity.id === 'lottery_ticket') return country.legal.gamblingLegal;
   return true;
 }
 

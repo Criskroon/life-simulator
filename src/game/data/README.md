@@ -18,18 +18,23 @@ eligibility.
 
 | Field | Type | Purpose |
 |---|---|---|
-| `code` | ISO-3166-1 alpha-2 (e.g. `"NL"`, `"US"`, `"GB"`) | The single ID stored on PlayerState; everything else is resolved on demand. |
-| `name`, `nameLocal` | string | Display name (English) and the country's name in its own language. |
+| `code` | ISO-3166-1 alpha-2 (`"NL"`, `"US"`, `"GB"`, `"JP"`, `"BR"`, `"ZA"`) | The single ID stored on PlayerState; everything else is resolved on demand. |
+| `name`, `nameLocal`, `flag` | string | Display name (English), name in own language, and emoji flag. |
 | `continent`, `region`, `culturalCluster` | enum | Used by `getCountriesByContinent()` / `getCountriesByCluster()` and event conditions like `{ path: 'country.continent', op: '==', value: 'Europe' }`. |
-| `languages` | ISO 639-1 codes | Drives the name pool via `getNamePool()`. The first language is the primary. |
-| `currency` | `{ code, symbol }` | Display only. `symbol` ends up in TopBar. |
-| `stats` | `CountryStats` | Real-world numbers — see below. |
-| `rules` | `CountryRules` | Legal ages, school window, top tax rate, weed/marriage flags. |
+| `language`, `languages` | string + ISO 639-1 codes | First language drives the name pool via `getNamePool()`. |
+| `currency` | `{ code, symbol, priceMultiplier?, salaryMultiplier? }` | Display + optional localisation. `symbol` ends up in TopBar. |
+| `economics` | `Economics` | Real-world numbers — see below. |
+| `demographics` | `Demographics` | Life expectancy, retirement age, optional indices. |
+| `education` | `EducationSystem` | School-start age, compulsory window, GPA scale, full stage list. |
+| `career` | `CareerSystem` | Min wage, work week, vacation, jobs list. |
+| `cities` | `City[]` | Capital + supporting cities, each with cost multiplier and tags. |
+| `housing`, `healthcare`, `legal`, `culture`, `names` | sub-objects | See type for shape. `legal` carries every age/flag (drinking, marriage, gambling, etc.). |
+| `cuisineHighlights?`, `sportsCulture?`, `holidays?`, `climate?` | optional flavor | For event content. |
 
-### `stats` — real-world data
+### `economics` — real-world data driving adjustments
 
-These come from public sources (World Bank, OECD, World Happiness
-Report, UN HDI, Numbeo). Update with care — the engine assumes:
+These come from public sources (World Bank, OECD, BLS, CBS for NL).
+The engine assumes:
 
 - `averageSalary` — used to scale baseline salaries (`adjustSalary`).
 - `costOfLivingIndex` — used to scale event money values
@@ -43,14 +48,16 @@ We anchor that baseline at GB so the existing baseline numbers in
 a country whose cost of living is 30% above GB, set
 `costOfLivingIndex: 1.30`.
 
-The remaining stats (`gdpPerCapita`, `lifeExpectancy`, `crimeIndex`,
-`happinessIndex`, etc.) are not yet wired into mechanics — they're
-available for future events and conditions.
+The remaining stats (`gdpPerCapita`, `inflationRate`, `unemploymentRate`)
+are available for future events and conditions; the optional indicators
+on `demographics` (`crimeIndex`, `happinessIndex`, `giniCoefficient`,
+`educationIndex`) are also free for content authors to gate on.
 
-### `rules` — flags and legal ages
+### `legal` — flags and legal ages
 
-Used today by `isLegalAge()`, `getSchoolingPeriod()`, and (in the
-future) by event conditions and effects.
+Used today by `isLegalAge()` (`drinkingAge`, `smokingAge`,
+`drivingAge`, `legalMarriageAge`), by the lottery activity
+(`gamblingLegal`), and by event conditions and effects.
 
 ## Adding a new country
 

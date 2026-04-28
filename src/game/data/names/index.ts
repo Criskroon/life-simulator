@@ -29,12 +29,14 @@ function dedupePool(set: NameSet): NameSet {
   };
 }
 
-const POOLS: Record<CountryCode, NameSet> = {
+const POOLS: Partial<Record<CountryCode, NameSet>> = {
   NL: dedupePool(NL_NAMES),
   US: dedupePool(US_NAMES),
   GB: dedupePool(GB_NAMES),
 };
 
+const FALLBACK_POOL = dedupePool(GB_NAMES);
+
 export function getCountryPool(code: CountryCode): NameSet {
-  return POOLS[code] ?? POOLS.GB;
+  return POOLS[code] ?? FALLBACK_POOL;
 }

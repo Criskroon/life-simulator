@@ -1,37 +1,43 @@
 import { describe, it, expect } from 'vitest';
+import { COUNTRIES, getCountry } from '../../src/game/data/countries';
 import {
-  COUNTRIES,
-  getCountry,
-  getCountriesByContinent,
-  getEducationStage,
   canEnterStage,
+  getEducationStage,
+} from '../../src/game/engine/educationEngine';
+import {
+  canAccessJob,
   getJob,
   getJobsForEducation,
-  canAccessJob,
-  getCity,
-  getCapital,
-  getRandomFirstName,
-  getRandomLastName,
-  getRandomFullName,
-  getNameByAge,
+} from '../../src/game/engine/careerEngine';
+import {
   formatMoney,
-} from '../index';
+  getCapital,
+  getCity,
+  getCountriesByContinent,
+  getNameByAge,
+  getRandomFirstName,
+  getRandomFullName,
+  getRandomLastName,
+} from '../../src/game/engine/countryEngine';
+import type { CountryCode } from '../../src/game/types/country';
 
 describe('Country Engine — Foundation', () => {
   // ==========================================================
-  // COUNTRIES record
+  // COUNTRIES table
   // ==========================================================
-  describe('COUNTRIES record', () => {
-    it('contains all 5 country codes', () => {
-      expect(Object.keys(COUNTRIES)).toEqual(['NL', 'US', 'JP', 'BR', 'ZA']);
+  describe('COUNTRIES table', () => {
+    it('contains all 6 country codes', () => {
+      const codes = COUNTRIES.map((c) => c.code).sort();
+      expect(codes).toEqual(['BR', 'GB', 'JP', 'NL', 'US', 'ZA']);
     });
 
-    it('each country has correct id', () => {
-      expect(COUNTRIES.NL.id).toBe('NL');
-      expect(COUNTRIES.US.id).toBe('US');
-      expect(COUNTRIES.JP.id).toBe('JP');
-      expect(COUNTRIES.BR.id).toBe('BR');
-      expect(COUNTRIES.ZA.id).toBe('ZA');
+    it('each country has correct code', () => {
+      expect(getCountry('NL').code).toBe('NL');
+      expect(getCountry('US').code).toBe('US');
+      expect(getCountry('GB').code).toBe('GB');
+      expect(getCountry('JP').code).toBe('JP');
+      expect(getCountry('BR').code).toBe('BR');
+      expect(getCountry('ZA').code).toBe('ZA');
     });
   });
 
@@ -43,13 +49,13 @@ describe('Country Engine — Foundation', () => {
       const nl = getCountry('NL');
       expect(nl.name).toBe('Netherlands');
       expect(nl.flag).toBe('🇳🇱');
-      expect(nl.continent).toBe('europe');
+      expect(nl.continent).toBe('Europe');
     });
 
     it('returns correct country for JP', () => {
       const jp = getCountry('JP');
       expect(jp.name).toBe('Japan');
-      expect(jp.continent).toBe('asia');
+      expect(jp.continent).toBe('Asia');
     });
   });
 
@@ -322,7 +328,9 @@ describe('Country Engine — Foundation', () => {
 
     it('getNameByAge returns classic name for elderly', () => {
       const name = getNameByAge(nl, 80, 'male');
-      const classicNames = nl.names.firstNamesMale.slice(40);
+      // Elderly bucket starts at index 4 * floor(total/5).
+      const classicStart = Math.floor(nl.names.firstNamesMale.length / 5) * 4;
+      const classicNames = nl.names.firstNamesMale.slice(classicStart);
       expect(classicNames).toContain(name);
     });
   });
@@ -331,16 +339,15 @@ describe('Country Engine — Foundation', () => {
   // Continents
   // ==========================================================
   describe('getCountriesByContinent', () => {
-    it('returns NL for europe', () => {
-      const countries = getCountriesByContinent('europe');
-      expect(countries.length).toBe(1);
-      expect(countries[0]?.id).toBe('NL');
+    it('returns NL and GB for Europe', () => {
+      const codes = getCountriesByContinent('Europe').map((c) => c.code).sort();
+      expect(codes).toEqual(['GB', 'NL']);
     });
 
-    it('returns US for north_america', () => {
-      const countries = getCountriesByContinent('north_america');
+    it('returns US for North America', () => {
+      const countries = getCountriesByContinent('North America');
       expect(countries.length).toBe(1);
-      expect(countries[0]?.id).toBe('US');
+      expect(countries[0]?.code).toBe('US');
     });
   });
 
@@ -349,13 +356,47 @@ describe('Country Engine — Foundation', () => {
   // ==========================================================
   describe('formatMoney', () => {
     it('formats EUR correctly', () => {
-      const nl = getCountry('NL');
-      expect(formatMoney(nl, 1000)).toBe('€1,000');
+      expect(formatMoney(getCountry('NL'), 1000)).toBe('€1,000');
     });
 
     it('formats USD correctly', () => {
-      const us = getCountry('US');
-      expect(formatMoney(us, 5000)).toBe('$5,000');
+      expect(formatMoney(getCountry('US'), 5000)).toBe('$5,000');
+    });
+  });
+
+  // ==========================================================
+  // Consolidation: economics + legal coexist with gameplay content
+  // ==========================================================
+  describe('Country Engine — Consolidation', () => {
+    it('NL has rich economics data', () => {
+      const nl = getCountry('NL');
+      expect(nl.economics.gdpPerCapita).toBe(65915);
+      expect(nl.economics.costOfLivingIndex).toBe(0.97);
+    });
+
+    it('NL has full education and economics', () => {
+      const nl = getCountry('NL');
+      expect(nl.education.stages.length).toBe(9);
+      expect(nl.economics.averageSalary).toBe(47500);
+    });
+
+    it('GB exists with baseline indices', () => {
+      const gb = getCountry('GB');
+      expect(gb.economics.costOfLivingIndex).toBe(1.0);
+      expect(gb.economics.housingPriceIndex).toBe(1.0);
+    });
+
+    it('all 6 countries have economics data', () => {
+      const codes: CountryCode[] = ['NL', 'US', 'GB', 'JP', 'BR', 'ZA'];
+      for (const code of codes) {
+        const country = getCountry(code);
+        expect(country.economics).toBeDefined();
+        expect(country.economics.gdpPerCapita).toBeGreaterThan(0);
+      }
+    });
+
+    it('NL has correct flag emoji', () => {
+      expect(getCountry('NL').flag).toBe('🇳🇱');
     });
   });
 });

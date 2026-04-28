@@ -1,9 +1,21 @@
 /**
- * Country shape. The player carries only the ISO-2 code on PlayerState; the
- * full Country record is resolved on demand via getCountry(). Stats are
- * sourced from real-world data (World Bank, OECD, World Happiness Report,
- * UN HDI) — see countries.ts for citations per country.
+ * Country shape — single source of truth.
+ *
+ * Combines economic indicators (used by adjustSalary, adjustPrice for event
+ * payloads) with gameplay content (education stages, jobs, cities). The
+ * player carries only the ISO-2 code on PlayerState; the full Country
+ * record is resolved on demand via getCountry().
+ *
+ * Stats are sourced from real-world data (World Bank, OECD, World Happiness
+ * Report, UN HDI, CBS for NL specifically) — see countries.ts for citations.
  */
+
+// =============================================================================
+// CORE TYPES
+// =============================================================================
+
+/** ISO-2 country code. */
+export type CountryCode = 'NL' | 'US' | 'GB' | 'JP' | 'BR' | 'ZA';
 
 export type Continent =
   | 'Europe'
@@ -50,75 +62,323 @@ export type CulturalCluster =
   | 'Sub-Saharan-African'
   | 'Generic';
 
-/** ISO-2 country code, e.g. "NL". Used as PlayerState.country. */
-export type CountryCode = string;
+export type GpaScale =
+  | 'NL_10'
+  | 'US_4'
+  | 'JP_5'
+  | 'EU_ECTS'
+  | 'UK_class'
+  | 'percentage';
 
-export interface CountryStats {
-  /** USD per capita, World Bank. */
-  gdpPerCapita: number;
-  /** USD per year, OECD/national stats. */
-  averageSalary: number;
-  /** USD per year, OECD median. */
-  medianSalary: number;
-  /** USD per year. 0 if no national minimum. */
-  minimumWage: number;
-  /** Annual %, IMF/national. */
-  inflationRate: number;
-  /** %, ILO. */
-  unemploymentRate: number;
-  /** 1.0 = world average (Numbeo-style index, USD-normalised). */
-  costOfLivingIndex: number;
-  /** 1.0 = world average for housing. */
-  housingPriceIndex: number;
-  /** Years, World Bank. */
-  lifeExpectancy: number;
-  /** 0..1, UN HDI education component. */
-  educationIndex: number;
-  /** 0..100, Numbeo crime index. Higher = more crime. */
-  crimeIndex: number;
-  /** 0..10, World Happiness Report ladder score. */
-  happinessIndex: number;
-  /** 0..1, World Bank Gini. */
-  giniCoefficient: number;
+export type EducationLevel =
+  | 'primary'
+  | 'lower_secondary'
+  | 'upper_secondary'
+  | 'vocational'
+  | 'tertiary'
+  | 'graduate';
+
+export type JobCategory =
+  | 'entry'
+  | 'mid'
+  | 'senior'
+  | 'executive'
+  | 'specialist';
+
+export type JobPrevalence = 'common' | 'uncommon' | 'rare';
+
+export type CareerCulture = 'merit' | 'seniority' | 'mixed';
+
+export type HealthcareSystem = 'universal' | 'private' | 'mixed';
+
+export type MilitaryService =
+  | 'voluntary'
+  | 'mandatory_male'
+  | 'mandatory_all'
+  | 'optional';
+
+export type HousingType =
+  | 'apartment'
+  | 'rowhouse'
+  | 'detached'
+  | 'studio'
+  | 'townhouse'
+  | 'condo';
+
+export type NameOrder = 'first_last' | 'last_first';
+
+export type HolidaySignificance = 'national' | 'religious' | 'cultural';
+
+// =============================================================================
+// EDUCATION
+// =============================================================================
+
+export interface EducationStage {
+  id: string;
+  name: string;
+  nameLocal: string;
+  abbreviation?: string;
+  level: EducationLevel;
+  ageStart: number;
+  ageEnd: number;
+  duration: number;
+  isCompulsory: boolean;
+  isSelectable: boolean;
+  prerequisites: string[];
+  nextStages: string[];
+  requirements?: {
+    minSmarts?: number;
+    minAge?: number;
+  };
+  cost: {
+    tuitionAnnual: number;
+    isPublic: boolean;
+    scholarshipsAvailable: boolean;
+  };
+  description: string;
 }
 
-export interface CountryRules {
+export interface EducationSystem {
+  schoolStartAge: number;
+  compulsoryUntilAge: number;
+  universityDuration: {
+    bachelor: number;
+    master: number;
+  };
+  tuitionAnnual: {
+    public: number;
+    private: number;
+  };
+  gpaScale: GpaScale;
+  selectionAt?: number;
+  stages: EducationStage[];
+}
+
+// =============================================================================
+// CAREER
+// =============================================================================
+
+export interface Job {
+  id: string;
+  title: string;
+  titleLocal: string;
+  industry: string;
+  category: JobCategory;
+  ageRange: { min: number; max: number };
+  salaryRange: {
+    min: number;
+    max: number;
+    median: number;
+  };
+  workHours: number;
+  educationRequired: string[];
+  prerequisites?: {
+    minSmarts?: number;
+    minLooks?: number;
+    minAge?: number;
+  };
+  description: string;
+  prevalence: JobPrevalence;
+}
+
+export interface CareerSystem {
+  minimumWageMonthly: number;
+  averageWorkWeek: number;
+  paidVacationDays: number;
+  careerCulture: CareerCulture;
+  prominentIndustries: string[];
+  jobs: Job[];
+}
+
+// =============================================================================
+// CITIES
+// =============================================================================
+
+export interface City {
+  id: string;
+  name: string;
+  nameLocal: string;
+  region: string;
+  isCapital: boolean;
+  population: number;
+  costMultiplier: number;
+  description: string;
+  characterTags: string[];
+}
+
+// =============================================================================
+// HOUSING
+// =============================================================================
+
+export interface Housing {
+  rentMedianMonthly: number;
+  ownershipRate: number;
+  typicalMortgageYears: number;
+  propertyTypes: HousingType[];
+  medianPropertyPrice: number;
+}
+
+// =============================================================================
+// HEALTHCARE
+// =============================================================================
+
+export interface Healthcare {
+  system: HealthcareSystem;
+  annualCostBaseline: number;
+  qualityIndex: number;
+  insuranceMandatory: boolean;
+}
+
+// =============================================================================
+// LEGAL
+// =============================================================================
+
+export interface Legal {
   drinkingAge: number;
   smokingAge: number;
-  marriageAge: number;
+  legalMarriageAge: number;
   drivingAge: number;
-  schoolStartAge: number;
-  schoolEndAge: number;
-  weedLegal: boolean;
-  sameSexMarriageLegal: boolean;
-  /**
-   * Loose "is gambling broadly available?" boolean — covers lottery, casinos,
-   * sports betting. A future revision could split this into per-vertical
-   * flags with age limits, but for the V1 lottery activity a simple bool
-   * is enough.
-   */
-  gambling: boolean;
-  /** Top marginal income tax rate, %. */
+  votingAge: number;
+  softDrugsLegal: boolean;
+  sameSexMarriage: boolean;
+  deathPenalty: boolean;
+  gamblingLegal: boolean;
+  militaryService: MilitaryService;
+  /** Top marginal income tax rate, fraction (0.495 = 49.5%). */
   incomeTaxTopRate: number;
 }
 
-export interface CountryCurrency {
+// =============================================================================
+// CULTURE
+// =============================================================================
+
+export interface Culture {
+  nameOrder: NameOrder;
+  automotiveBrands: string[];
+  typicalLifePath: string;
+}
+
+// =============================================================================
+// DEMOGRAPHICS
+// =============================================================================
+
+export interface Demographics {
+  lifeExpectancy: { male: number; female: number };
+  partnershipAgeAverage: { male: number; female: number };
+  marriageAgeAverage: { male: number; female: number };
+  firstChildAgeAverage: { male: number; female: number };
+  averageChildrenPerFamily: number;
+  retirementAge: number;
+  adultAge: number;
+
+  // Optional indicators (kept on Demographics for convenience; the
+  // economics block carries the headline stats used by adjustSalary etc.)
+  educationIndex?: number;
+  crimeIndex?: number;
+  happinessIndex?: number;
+  giniCoefficient?: number;
+}
+
+// =============================================================================
+// ECONOMICS — drives adjustSalary / adjustPrice / adjustHousePrice
+// =============================================================================
+
+export interface Economics {
+  gdpPerCapita: number;
+  averageSalary: number;
+  medianSalary: number;
+  inflationRate: number;
+  unemploymentRate: number;
+  /** 1.0 = world (GB) baseline. NL ~0.97, US ~1.07. */
+  costOfLivingIndex: number;
+  /** 1.0 = world (GB) baseline. NL ~1.10, US ~0.95. */
+  housingPriceIndex: number;
+}
+
+// =============================================================================
+// CURRENCY
+// =============================================================================
+
+export interface Currency {
   /** ISO-4217 code, e.g. "EUR". */
   code: string;
   /** Display symbol, e.g. "€". */
   symbol: string;
+  /** Optional convenience multipliers (price / salary localisation). */
+  priceMultiplier?: number;
+  salaryMultiplier?: number;
 }
 
+// =============================================================================
+// NAMES
+// =============================================================================
+
+export interface NameDatabase {
+  firstNamesMale: string[];
+  firstNamesFemale: string[];
+  lastNames: string[];
+}
+
+// =============================================================================
+// OPTIONAL FLAVOR
+// =============================================================================
+
+export interface SportsCulture {
+  nationalSports: string[];
+  popularSports: string[];
+}
+
+export interface Holiday {
+  name: string;
+  nameLocal: string;
+  month: number;
+  day: number;
+  significance: HolidaySignificance;
+  description: string;
+}
+
+export interface Climate {
+  summerHigh: number;
+  winterLow: number;
+  description: string;
+}
+
+// =============================================================================
+// COUNTRY (top-level interface)
+// =============================================================================
+
 export interface Country {
+  // Identity
   code: CountryCode;
   name: string;
   nameLocal: string;
+  flag: string;
   continent: Continent;
   region: Region;
   culturalCluster: CulturalCluster;
-  /** ISO 639-1 language codes, e.g. ["nl"], ["en"]. First = primary. */
+
+  // Language & currency
+  /** Primary language, English display. */
+  language: string;
+  /** ISO 639-1 codes. First entry drives the name pool. */
   languages: string[];
-  currency: CountryCurrency;
-  stats: CountryStats;
-  rules: CountryRules;
+  currency: Currency;
+
+  // Data systems
+  demographics: Demographics;
+  economics: Economics;
+  education: EducationSystem;
+  career: CareerSystem;
+  cities: City[];
+  housing: Housing;
+  healthcare: Healthcare;
+  legal: Legal;
+  culture: Culture;
+  names: NameDatabase;
+
+  // Optional flavor
+  cuisineHighlights?: string[];
+  sportsCulture?: SportsCulture;
+  holidays?: Holiday[];
+  climate?: Climate;
 }
