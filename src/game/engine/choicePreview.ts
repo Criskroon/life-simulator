@@ -1,6 +1,6 @@
 import type { Choice } from '../types/events';
 import type { PlayerState } from '../types/gameState';
-import { adjustPrice, getCurrentCountry } from './countryEngine';
+import { adjustPrice, formatMoney, getCurrentCountry } from './countryEngine';
 
 /**
  * UI-facing preview of a choice's monetary impact. The `cost` field on a
@@ -48,7 +48,7 @@ export function getChoicePreview(
   // figure matches the eventual deduction exactly.
   const adjusted = adjustPrice(choice.cost, country);
   const absoluteAdjusted = Math.abs(adjusted);
-  const formatted = `${symbol}${absoluteAdjusted.toLocaleString()}`;
+  const formatted = formatMoney(country, absoluteAdjusted);
   const costLabel = adjusted < 0 ? formatted : `+${formatted}`;
   const isAffordable = adjusted >= 0 || state.money >= absoluteAdjusted;
 
