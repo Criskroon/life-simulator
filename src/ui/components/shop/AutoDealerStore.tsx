@@ -114,7 +114,10 @@ export function AutoDealerStore({
                 Auto Dealer
               </h2>
               <p className="mt-[2px] font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-soft">
-                Lange Vijverberg · Den Haag · {AUTO_DEALER_INVENTORY.length} in stock
+                Lange Vijverberg · Den Haag
+              </p>
+              <p className="mt-[1px] font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+                {AUTO_DEALER_INVENTORY.length} in stock
               </p>
             </div>
             <span
