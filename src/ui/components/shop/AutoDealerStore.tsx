@@ -42,6 +42,11 @@ export function AutoDealerStore({
   const country = getCurrentCountry(player);
   const symbol = country.currency.symbol;
   const [filter, setFilter] = useState<AutoFilterId>('all');
+  // Below 18 the player can't legally drive — showing a wall of
+  // €40,000+ inventory reads as broken context. Replace the body
+  // with a quiet age-gate while keeping the chrome (header + cash)
+  // in place so the screen still feels like part of the Shop.
+  const isMinor = player.age < 18;
 
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -137,66 +142,112 @@ export function AutoDealerStore({
 
         {/* Body — filters + grids in a single scroll container */}
         <div className="flex flex-1 flex-col overflow-y-auto px-5 pt-3 pb-5">
-          <FilterPills active={filter} onSelect={setFilter} />
-
-          {filtered.length === 0 ? (
-            <EmptyState filterId={filter} onReset={() => setFilter('all')} />
+          {isMinor ? (
+            <MinorEmptyState />
           ) : (
             <>
-              {/* Featured today */}
-              <SectionRow
-                title="Featured today"
-                count={featured.length}
-                accent="live"
-              />
-              {featured.length === 0 ? (
-                <p className="mt-1 mb-3 font-sans text-[12px] italic leading-snug text-ink-soft">
-                  Nothing featured fits this filter right now.
-                </p>
-              ) : (
-                <div
-                  data-testid="auto-dealer-featured"
-                  className="mt-2 mb-4 grid grid-cols-2 gap-3"
-                >
-                  {featured.map((listing) => (
-                    <ProductCard
-                      key={listing.id}
-                      listing={listing}
-                      currencySymbol={symbol}
-                      imageAccentClass={categoryAccent(listing.category)}
-                      onClick={() => handleBuy(listing)}
-                    />
-                  ))}
-                </div>
-              )}
+              <FilterPills active={filter} onSelect={setFilter} />
 
-              {/* In stock */}
-              <SectionRow title="In stock" count={inStock.length} />
-              {inStock.length === 0 ? (
-                <p className="mt-1 font-sans text-[12px] italic leading-snug text-ink-soft">
-                  Nothing else in stock matches this filter.
-                </p>
+              {filtered.length === 0 ? (
+                <EmptyState filterId={filter} onReset={() => setFilter('all')} />
               ) : (
-                <div
-                  data-testid="auto-dealer-instock"
-                  className="mt-2 grid grid-cols-2 gap-3"
-                >
-                  {inStock.map((listing) => (
-                    <ProductCard
-                      key={listing.id}
-                      listing={listing}
-                      currencySymbol={symbol}
-                      imageAccentClass={categoryAccent(listing.category)}
-                      onClick={() => handleBuy(listing)}
-                    />
-                  ))}
-                </div>
+                <>
+                  {/* Featured today */}
+                  <SectionRow
+                    title="Featured today"
+                    count={featured.length}
+                    accent="live"
+                  />
+                  {featured.length === 0 ? (
+                    <p className="mt-1 mb-3 font-sans text-[12px] italic leading-snug text-ink-soft">
+                      Nothing featured fits this filter right now.
+                    </p>
+                  ) : (
+                    <div
+                      data-testid="auto-dealer-featured"
+                      className="mt-2 mb-4 grid grid-cols-2 gap-3"
+                    >
+                      {featured.map((listing) => (
+                        <ProductCard
+                          key={listing.id}
+                          listing={listing}
+                          currencySymbol={symbol}
+                          imageAccentClass={categoryAccent(listing.category)}
+                          onClick={() => handleBuy(listing)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* In stock */}
+                  <SectionRow title="In stock" count={inStock.length} />
+                  {inStock.length === 0 ? (
+                    <p className="mt-1 font-sans text-[12px] italic leading-snug text-ink-soft">
+                      Nothing else in stock matches this filter.
+                    </p>
+                  ) : (
+                    <div
+                      data-testid="auto-dealer-instock"
+                      className="mt-2 grid grid-cols-2 gap-3"
+                    >
+                      {inStock.map((listing) => (
+                        <ProductCard
+                          key={listing.id}
+                          listing={listing}
+                          currencySymbol={symbol}
+                          imageAccentClass={categoryAccent(listing.category)}
+                          onClick={() => handleBuy(listing)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function MinorEmptyState() {
+  return (
+    <div
+      data-testid="auto-dealer-minor"
+      className="mt-4 rounded-2xl border border-dashed border-cream-dark bg-cream-light px-4 py-6 text-center"
+    >
+      <div className="mx-auto mb-2 inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-cream-dark bg-cream text-ink-soft">
+        <CarGlyph />
+      </div>
+      <div className="font-display text-[16px] font-bold tracking-[-0.01em] text-ink">
+        Too young to drive.
+      </div>
+      <p className="mt-1 font-sans text-[12.5px] italic leading-snug text-ink-soft">
+        Come back when you're 18.
+      </p>
+    </div>
+  );
+}
+
+function CarGlyph() {
+  return (
+    <svg
+      width={22}
+      height={22}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 14 L5.5 9 H18.5 L20 14" />
+      <path d="M3 14 H21 V18 H3 Z" />
+      <circle cx={7} cy={18} r={1.4} />
+      <circle cx={17} cy={18} r={1.4} />
+    </svg>
   );
 }
 
