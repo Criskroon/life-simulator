@@ -224,9 +224,8 @@ export function getNameByAge(
 /** Format a money amount with the country's currency symbol. */
 export function formatMoney(country: Country, amount: number): string {
   const { symbol } = country.currency;
-  const formatted = amount.toLocaleString('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-  return `${symbol}${formatted}`;
+  const absAmount = Math.abs(Math.round(amount));
+  const sign = amount < 0 ? '-' : '';
+  const formatted = absAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `${sign}${symbol}${formatted}`;
 }
