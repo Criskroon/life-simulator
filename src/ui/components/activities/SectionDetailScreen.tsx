@@ -131,7 +131,7 @@ export function SectionDetailScreen({
           </span>
           <div className="flex items-center gap-[6px]">
             <span className="font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-ink-faint">
-              Have
+              Actions left
             </span>
             <ActionPointPips remaining={remaining} total={TOTAL_ACTIONS} />
           </div>
